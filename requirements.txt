@@ -9,7 +9,7 @@ prophet
 transformers
 torch
 groq
-google-generativeai
+google-genai
 python-dotenv
 streamlit
 plotly

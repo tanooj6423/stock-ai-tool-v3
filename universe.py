@@ -115,7 +115,10 @@ SECTOR_MAP = {
     ],
     "Realty": [
         "GODREJPROP.NS"
-    ]
+    ],
+    "Telecom": [
+        "BHARTIARTL.NS", "IDEA.NS", "TATACOMM.NS", "INDUSTOWER.NS"
+    ],
 }
 
 SECTOR_INDICES = {

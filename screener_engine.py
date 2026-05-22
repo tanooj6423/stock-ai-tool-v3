@@ -159,47 +159,65 @@ def calculate_entry_targets(df, signal):
         current_price = df["Close"].iloc[-1]
         atr = df["ATR"].iloc[-1]
         support_levels, resistance_levels = get_support_resistance(df)
+
         if signal == "BUY":
             entry = current_price
-            stop_loss = (support_levels[0] if support_levels
-                        else current_price - 2 * atr)
-            risk = entry - stop_loss
-            target1 = (resistance_levels[0] if resistance_levels
-                      else entry + 2 * risk)
-            target2 = (resistance_levels[1] if len(resistance_levels) > 1
-                      else entry + 3 * risk)
-            rr1 = (target1 - entry) / risk if risk > 0 else 2.0
-            rr2 = (target2 - entry) / risk if risk > 0 else 3.0
+            stop_loss = (support_levels[0]
+                        if support_levels and
+                        (entry - support_levels[0]) > atr * 0.5
+                        else entry - 2 * atr)
+            risk = max(entry - stop_loss, atr)
+
+            valid_t1 = [r for r in resistance_levels
+                       if r > entry + risk]
+            valid_t2 = [r for r in resistance_levels
+                       if r > entry + risk * 2]
+
+            target1 = valid_t1[0] if valid_t1 else entry + 2 * risk
+            target2 = valid_t2[0] if valid_t2 else entry + 3 * risk
+
+            rr1 = round((target1 - entry) / risk, 2)
+            rr2 = round((target2 - entry) / risk, 2)
+
         else:
             entry = current_price
-            stop_loss = (resistance_levels[0] if resistance_levels
-                        else current_price + 2 * atr)
-            risk = stop_loss - entry
-            target1 = (support_levels[0] if support_levels
-                      else entry - 2 * risk)
-            target2 = (support_levels[1] if len(support_levels) > 1
-                      else entry - 3 * risk)
-            rr1 = (entry - target1) / risk if risk > 0 else 2.0
-            rr2 = (entry - target2) / risk if risk > 0 else 3.0
+            stop_loss = (resistance_levels[0]
+                        if resistance_levels and
+                        (resistance_levels[0] - entry) > atr * 0.5
+                        else entry + 2 * atr)
+            risk = max(stop_loss - entry, atr)
+
+            valid_t1 = [s for s in support_levels
+                       if s < entry - risk]
+            valid_t2 = [s for s in support_levels
+                       if s < entry - risk * 2]
+
+            target1 = valid_t1[0] if valid_t1 else entry - 2 * risk
+            target2 = valid_t2[0] if valid_t2 else entry - 3 * risk
+
+            rr1 = round((entry - target1) / risk, 2)
+            rr2 = round((entry - target2) / risk, 2)
+
         return {
             "entry": round(entry, 2),
             "stop_loss": round(stop_loss, 2),
             "target1": round(target1, 2),
             "target2": round(target2, 2),
-            "rr1": round(rr1, 2),
-            "rr2": round(rr2, 2),
-            "risk_amount": round(abs(entry - stop_loss), 2)
+            "rr1": max(rr1, 1.0),
+            "rr2": max(rr2, 2.0),
+            "risk_amount": round(risk, 2)
         }
     except:
         price = df["Close"].iloc[-1]
+        atr = df["ATR"].iloc[-1] if "ATR" in df.columns else price * 0.02
         return {
-            "entry": price,
-            "stop_loss": round(price * 0.95, 2),
-            "target1": round(price * 1.05, 2),
-            "target2": round(price * 1.10, 2),
-            "rr1": 1.0,
-            "rr2": 2.0,
-            "risk_amount": round(price * 0.05, 2)
+            "entry": round(price, 2),
+            "stop_loss": round(price - 2 * atr, 2),
+            "target1": round(price + 2 * atr, 2),
+            "target2": round(price + 3 * atr, 2),
+            "rr1": 2.0,
+            "rr2": 3.0,
+            "risk_amount": round(2 * atr, 2)
         }
 
 def calculate_position_size(capital, risk_pct, entry, stop_loss):

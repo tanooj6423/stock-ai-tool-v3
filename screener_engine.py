@@ -6,7 +6,7 @@ from data import (get_stock_data, add_indicators, get_weekly_data,
                   get_nifty_correlation, get_relative_strength,
                   get_market_regime, get_sector_momentum,
                   get_fibonacci_levels, get_nifty_data)
-from model import train_model, get_signal, get_risk_metrics
+from model import train_model_fast, get_signal, get_risk_metrics
 from sentiment import get_news_sentiment
 from universe import get_sector, SECTOR_INDICES, is_commodity
 
@@ -20,16 +20,19 @@ def score_ml_signal(signal, confidence, buy_prob):
 def score_multiframe(df_daily, df_weekly):
     score = 0
     try:
-        if df_daily is not None and df_weekly is not None:
+        if df_daily is not None:
             daily_trend = (df_daily["Close"].iloc[-1] >
                           df_daily["SMA_50"].iloc[-1])
-            weekly_close = df_weekly["Close"].iloc[-1]
-            weekly_sma20 = df_weekly["Close"].rolling(20).mean().iloc[-1]
-            weekly_trend = weekly_close > weekly_sma20
-            if daily_trend and weekly_trend:
-                score = 15
-            elif daily_trend or weekly_trend:
-                score = 7
+            if daily_trend:
+                score = 8
+            if df_weekly is not None:
+                weekly_close = df_weekly["Close"].iloc[-1]
+                weekly_sma20 = df_weekly["Close"].rolling(20).mean().iloc[-1]
+                weekly_trend = weekly_close > weekly_sma20
+                if daily_trend and weekly_trend:
+                    score = 15
+                elif weekly_trend:
+                    score = 7
     except:
         pass
     return score
@@ -54,7 +57,9 @@ def score_market_regime(regime):
         return 10
     elif regime == "sideways":
         return 5
-    return 0
+    elif regime == "unknown":
+        return 5
+    return 3
 
 def score_relative_strength(rs):
     try:
@@ -144,7 +149,8 @@ def score_fibonacci(df):
 
 def score_institutional(ticker, df):
     try:
-        vol_trend = df["Volume"].tail(5).mean() > df["Volume"].tail(20).mean()
+        vol_trend = (df["Volume"].tail(5).mean() >
+                    df["Volume"].tail(20).mean())
         price_trend = df["Close"].iloc[-1] > df["Close"].iloc[-5]
         if vol_trend and price_trend:
             return 10
@@ -235,7 +241,10 @@ def calculate_position_size(capital, risk_pct, entry, stop_loss):
 def run_full_scan(tickers, capital=50000, risk_pct=1.5,
                   progress_callback=None):
     nifty_df = get_nifty_data()
-    regime = get_market_regime(nifty_df) if nifty_df is not None else "unknown"
+    regime = "unknown"
+    if nifty_df is not None and not nifty_df.empty:
+        regime = get_market_regime(nifty_df)
+
     results = []
     total = len(tickers)
 
@@ -243,15 +252,13 @@ def run_full_scan(tickers, capital=50000, risk_pct=1.5,
         if progress_callback:
             progress_callback(i, total, ticker)
         try:
-            df = get_stock_data(ticker, period="2y")
-            if df is None or len(df) < 100:
+            df = get_stock_data(ticker, period="1y")
+            if df is None or len(df) < 60:
                 continue
             df = add_indicators(df)
             if df is None or len(df) < 50:
                 continue
-            df_weekly = get_weekly_data(ticker)
-            df_weekly_ind = (add_indicators(df_weekly)
-                            if df_weekly is not None else None)
+
             fundamentals = get_fundamentals(ticker)
             sector = get_sector(ticker)
             correlation = (get_nifty_correlation(df, nifty_df)
@@ -259,23 +266,23 @@ def run_full_scan(tickers, capital=50000, risk_pct=1.5,
             rs = (get_relative_strength(df, nifty_df)
                  if nifty_df is not None else None)
             sentiment, sent_conf, _, _ = get_news_sentiment(ticker)
-            model, scaler, features, accuracy = train_model(ticker)
+
+            model, scaler, features, accuracy = train_model_fast(ticker)
             if model is None:
                 continue
+
             signal, confidence, buy_prob, sell_prob = get_signal(
                 model, scaler, df, features)
-            if confidence < 0.60:
+
+            if signal != "BUY" or confidence < 0.60:
                 continue
-            if regime == "bear" and signal not in ["BUY", "SELL"]:
-                continue
-            if regime != "bear" and signal != "BUY":
-                continue
+
             rsi = df["RSI"].iloc[-1]
-            if rsi > 70 or rsi < 30:
+            if rsi > 72 or rsi < 28:
                 continue
 
             s1 = score_ml_signal(signal, confidence, buy_prob)
-            s2 = score_multiframe(df, df_weekly_ind)
+            s2 = score_multiframe(df, None)
             s3 = score_volume(df)
             s4 = score_market_regime(regime)
             s5 = score_relative_strength(rs)
@@ -288,7 +295,7 @@ def run_full_scan(tickers, capital=50000, risk_pct=1.5,
             total_score = int(s1 + s2 + s3 + s4 + s5 +
                              s6 + s7 + s8 + s9 + s10)
 
-            min_threshold = 45 if regime == "bear" else 55
+            min_threshold = 45 if regime in ["bear", "unknown"] else 55
             if total_score < min_threshold:
                 continue
 

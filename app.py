@@ -4,16 +4,21 @@ import plotly.express as px
 import pandas as pd
 import numpy as np
 import os
+import time
+from dotenv import load_dotenv
 from data import (get_stock_data, add_indicators, get_fundamentals,
                   get_support_resistance, get_nifty_data,
                   get_nifty_correlation, get_relative_strength,
                   get_market_regime, get_fibonacci_levels,
                   validate_ticker)
 from model import train_model, get_signal, get_risk_metrics
-from sentiment import get_news_sentiment
+from sentiment import (get_news_sentiment, NEGATIVE_KEYWORDS,
+                       POSITIVE_KEYWORDS)
 from ai_explain import explain_signal, generate_pick_thesis
 from screener_engine import run_full_scan, calculate_position_size
 from universe import ALL_STOCKS, NIFTY_50, COMMODITIES, get_sector
+
+load_dotenv()
 
 st.set_page_config(
     page_title="NSE Stock Intelligence v3",
@@ -25,25 +30,6 @@ st.markdown("""
 <style>
 [data-testid="stMetricValue"] { font-size: 1.3rem; font-weight: 600; }
 [data-testid="stMetricLabel"] { font-size: 0.75rem; }
-.buy-badge {
-    background: #00c853; color: white;
-    padding: 4px 12px; border-radius: 20px;
-    font-weight: bold; font-size: 1.1rem;
-}
-.sell-badge {
-    background: #d50000; color: white;
-    padding: 4px 12px; border-radius: 20px;
-    font-weight: bold; font-size: 1.1rem;
-}
-.score-high { color: #00c853; font-weight: bold; font-size: 1.3rem; }
-.score-mid { color: #ffa000; font-weight: bold; font-size: 1.3rem; }
-.score-low { color: #d50000; font-weight: bold; font-size: 1.3rem; }
-.pick-card {
-    border: 1px solid #333;
-    border-radius: 12px;
-    padding: 16px;
-    margin-bottom: 16px;
-}
 </style>
 """, unsafe_allow_html=True)
 
@@ -61,27 +47,32 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
 with tab5:
     st.subheader("Your settings")
     capital = st.number_input(
-        "Trading capital (₹)", min_value=10000,
-        max_value=10000000, value=50000, step=5000
+        "Trading capital (₹)",
+        min_value=10000, max_value=10000000,
+        value=50000, step=5000
     )
     risk_pct = st.slider(
-        "Risk per trade (%)", min_value=0.5,
-        max_value=3.0, value=1.5, step=0.25
+        "Risk per trade (%)",
+        min_value=0.5, max_value=3.0,
+        value=1.5, step=0.25
     )
     min_score = st.slider(
-        "Minimum score to show", min_value=50,
-        max_value=85, value=60, step=5
+        "Minimum score to show",
+        min_value=40, max_value=85,
+        value=55, step=5
     )
     scan_universe = st.selectbox(
         "Scan universe",
-        ["Nifty 50 only", "Nifty 50 + Next 50", "Full universe (150 stocks)"],
+        ["Nifty 50 only",
+         "Nifty 50 + Next 50",
+         "Full universe (150 stocks)"],
         index=1
     )
     st.caption("Settings are saved for this session.")
 
 with tab1:
     st.subheader("🎯 Daily top picks — AI screened")
-    st.caption("Composite 10-layer scoring across the full NSE universe. Auto-cached for 6 hours.")
+    st.caption("10-layer composite scoring. Risk flags auto-excluded. Cached 6 hours.")
 
     col1, col2 = st.columns([3, 1])
     with col2:
@@ -95,7 +86,6 @@ with tab1:
     else:
         scan_tickers = ALL_STOCKS
 
-    import time
     progress_bar = st.progress(0)
     status_text = st.empty()
     time_text = st.empty()
@@ -110,7 +100,7 @@ with tab1:
         secs = remaining % 60
         progress_bar.progress(pct)
         status_text.text(
-            f"Scanning {current_ticker.replace('.NS','')}... "
+            f"Scanning {current_ticker.replace('.NS', '')}... "
             f"({current}/{total})"
         )
         time_text.text(f"Estimated time remaining: {mins}m {secs}s")
@@ -138,20 +128,24 @@ with tab1:
     )
 
     if not picks:
-        st.warning("No stocks passed all screening criteria today. Market conditions may not be favourable for new entries.")
+        st.warning(
+            "No stocks passed all screening criteria today. "
+            "Market conditions may not be favourable for new entries."
+        )
     else:
         for i, pick in enumerate(picks):
             score = pick["score"]
-            score_class = (
-                "score-high" if score >= 75
-                else "score-mid" if score >= 65
-                else "score-low"
+            trend_icon = (
+                "📈" if pick.get("sentiment_trend") == "improving"
+                else "📉" if pick.get("sentiment_trend") == "deteriorating"
+                else "➡️"
             )
             with st.expander(
-                f"#{i+1} {pick['ticker'].replace('.NS','')} — "
+                f"#{i+1} {pick['ticker'].replace('.NS', '')} — "
                 f"Score: {score}/100 | "
                 f"{pick['signal']} {pick['confidence']:.1%} | "
-                f"₹{pick['price']:,.2f}",
+                f"₹{pick['price']:,.2f} | "
+                f"Sentiment: {trend_icon}",
                 expanded=(i < 3)
             ):
                 c1, c2, c3, c4, c5, c6 = st.columns(6)
@@ -160,13 +154,22 @@ with tab1:
                 c3.metric("Target 1", f"₹{pick['target1']:,.2f}")
                 c4.metric("Target 2", f"₹{pick['target2']:,.2f}")
                 c5.metric("R/R ratio", f"1:{pick['rr1']:.1f}")
-                c6.metric("Shares", f"{pick['shares']}")
+                if pick["shares"] > 0:
+                    c6.metric("Shares", f"{pick['shares']}")
+                else:
+                    c6.metric("Shares", "—")
+                    if pick.get("capital_note"):
+                        st.caption(f"⚠️ {pick['capital_note']}")
 
                 m1, m2, m3, m4, m5, m6 = st.columns(6)
                 m1.metric("RSI", f"{pick['rsi']}")
                 m2.metric("Confidence", f"{pick['confidence']:.1%}")
                 m3.metric("Buy prob", f"{pick['buy_prob']:.1%}")
-                m4.metric("Sentiment", pick['sentiment'].capitalize())
+                m4.metric(
+                    "Sentiment",
+                    f"{pick['sentiment'].capitalize()} "
+                    f"({pick.get('sentiment_score', 0):+.2f})"
+                )
                 m5.metric("Sector", pick['sector'])
                 m6.metric("Sharpe", f"{pick['sharpe']}")
 
@@ -174,8 +177,7 @@ with tab1:
                 breakdown = pick["score_breakdown"]
                 cols = st.columns(len(breakdown))
                 for j, (layer, pts) in enumerate(breakdown.items()):
-                    max_pts = [20, 15, 10, 10, 10, 8, 8, 8, 5, 10][j]
-                    cols[j].metric(layer, f"{pts}/{max_pts}")
+                    cols[j].metric(layer, pts)
 
                 st.markdown("**AI trade thesis:**")
                 with st.spinner("Generating thesis..."):
@@ -197,9 +199,9 @@ with tab1:
                     )
                 st.info(thesis)
 
-                if pick["position_cost"] > 0:
+                if pick["shares"] > 0 and pick["position_cost"] > 0:
                     st.caption(
-                        f"Position size: {pick['shares']} shares | "
+                        f"Position: {pick['shares']} shares | "
                         f"Cost: ₹{pick['position_cost']:,.2f} | "
                         f"Max loss: ₹{pick['risk_amount'] * pick['shares']:,.2f}"
                     )
@@ -236,23 +238,37 @@ with tab2:
             df = add_indicators(df)
         fundamentals = get_fundamentals(ticker)
         nifty_df = get_nifty_data()
-        correlation = get_nifty_correlation(df, nifty_df) if (df is not None and nifty_df is not None) else None
-        rs = get_relative_strength(df, nifty_df) if (df is not None and nifty_df is not None) else None
-        regime = get_market_regime(nifty_df) if nifty_df is not None else "unknown"
-        support_levels, resistance_levels = get_support_resistance(df) if df is not None else ([], [])
+        correlation = (
+            get_nifty_correlation(df, nifty_df)
+            if df is not None and nifty_df is not None else None
+        )
+        rs = (
+            get_relative_strength(df, nifty_df)
+            if df is not None and nifty_df is not None else None
+        )
+        regime = (
+            get_market_regime(nifty_df)
+            if nifty_df is not None else "unknown"
+        )
+        support_levels, resistance_levels = (
+            get_support_resistance(df)
+            if df is not None else ([], [])
+        )
 
     if df is None or df.empty:
         st.error("Could not load data for this ticker.")
     else:
-        price = df["Close"].iloc[-1]
-        prev = df["Close"].iloc[-2]
+        price = float(df["Close"].iloc[-1])
+        prev = float(df["Close"].iloc[-2])
         change = ((price - prev) / prev) * 100
         sector = get_sector(ticker)
 
         st.markdown(f"### {ticker.replace('.NS', '')} — ₹{price:,.2f}")
-        st.caption(f"Sector: {fundamentals.get('Sector', sector)} | "
-                  f"Industry: {fundamentals.get('Industry', 'N/A')} | "
-                  f"Market regime: {regime.upper()}")
+        st.caption(
+            f"Sector: {fundamentals.get('Sector', sector)} | "
+            f"Industry: {fundamentals.get('Industry', 'N/A')} | "
+            f"Market regime: {regime.upper()}"
+        )
 
         c1, c2, c3, c4, c5, c6 = st.columns(6)
         c1.metric("Price", f"₹{price:,.2f}", f"{change:+.2f}%")
@@ -332,7 +348,9 @@ with tab2:
                 y=30, line_dash="dash", line_color="green",
                 annotation_text="Oversold"
             )
-            fig_rsi.update_layout(title="RSI", height=250, showlegend=False)
+            fig_rsi.update_layout(
+                title="RSI", height=250, showlegend=False
+            )
             st.plotly_chart(fig_rsi, use_container_width=True)
 
         with col2:
@@ -367,10 +385,11 @@ with tab2:
         ))
         fig_vol.add_trace(go.Scatter(
             x=df.index, y=df["Volume_SMA"],
-            name="Vol SMA 20",
-            line=dict(color="white")
+            name="Vol SMA 20", line=dict(color="white")
         ))
-        fig_vol.update_layout(title="Volume", height=200, showlegend=False)
+        fig_vol.update_layout(
+            title="Volume", height=200, showlegend=False
+        )
         st.plotly_chart(fig_vol, use_container_width=True)
 
         st.markdown("---")
@@ -395,47 +414,98 @@ with tab2:
         r7.metric("Max drawdown", risk_metrics["Max Drawdown"])
         r8.metric("Ann. volatility", risk_metrics["Annual Volatility"])
         r9.metric("Win rate", risk_metrics["Win Rate"])
-        r10.metric("Rel. strength", f"{rs:+.1f}%" if rs else "N/A")
+        r10.metric(
+            "Rel. strength",
+            f"{rs:+.1f}%" if rs else "N/A"
+        )
 
         st.markdown("---")
         if fundamentals:
             st.subheader("Fundamentals")
             keys = [k for k in fundamentals
-                   if k not in ["Sector", "Industry"]]
+                    if k not in ["Sector", "Industry"]]
             fcols = st.columns(4)
             for i, k in enumerate(keys):
                 v = fundamentals[k]
                 if k == "Market Cap" and isinstance(v, (int, float)):
                     fcols[i % 4].metric(k, f"₹{v/1e9:.0f}B")
-                elif k == "Dividend Yield" and isinstance(v, float):
-                    fcols[i % 4].metric(k, f"{v:.1%}")
-                elif k == "ROE" and isinstance(v, float):
-                    fcols[i % 4].metric(k, f"{v:.1%}")
-                elif k == "Revenue Growth" and isinstance(v, float):
-                    fcols[i % 4].metric(k, f"{v:.1%}")
-                elif k == "Promoter Holding" and isinstance(v, float):
+                elif k in ["Dividend Yield", "ROE",
+                           "Revenue Growth",
+                           "Promoter Holding"] and isinstance(v, float):
                     fcols[i % 4].metric(k, f"{v:.1%}")
                 else:
                     fcols[i % 4].metric(
-                        k, f"{round(v,2)}" if isinstance(v, float) else str(v)
+                        k,
+                        f"{round(v, 2)}" if isinstance(v, float) else str(v)
                     )
 
         st.markdown("---")
         st.subheader("News sentiment")
         with st.spinner("Analysing news..."):
-            sentiment, sent_conf, distribution, headlines = get_news_sentiment(ticker)
+            news_data = get_news_sentiment(ticker)
 
-        color_s = (
-            "green" if sentiment == "positive"
-            else "red" if sentiment == "negative"
-            else "gray"
+        sentiment = news_data["sentiment"]
+        sent_conf = news_data["confidence"]
+        distribution = news_data["distribution"]
+        headlines = news_data["headlines"]
+        trend = news_data["trend"]
+        risk_flags = news_data["risk_flags"]
+        pos_kw = news_data["positive_keywords"]
+        neg_kw = news_data["negative_keywords"]
+        sources = news_data["sources"]
+        sentiment_score = news_data["sentiment_score"]
+        headline_count = news_data["headline_count"]
+
+        trend_icon = (
+            "📈" if trend == "improving"
+            else "📉" if trend == "deteriorating"
+            else "➡️"
         )
-        sc1, sc2, sc3 = st.columns(3)
+
+        sc1, sc2, sc3, sc4, sc5 = st.columns(5)
         sc1.metric("Sentiment", sentiment.capitalize())
         sc2.metric("Confidence", f"{sent_conf:.1%}")
-        sc3.metric("Positive score", f"{distribution.get('positive', 0):.1%}")
+        sc3.metric("Score", f"{sentiment_score:+.2f}")
+        sc4.metric("Trend", f"{trend_icon} {trend.capitalize()}")
+        sc5.metric("Headlines", headline_count)
+
+        d1, d2, d3 = st.columns(3)
+        d1.metric(
+            "Positive", f"{distribution.get('positive', 0):.1%}"
+        )
+        d2.metric(
+            "Neutral", f"{distribution.get('neutral', 0):.1%}"
+        )
+        d3.metric(
+            "Negative", f"{distribution.get('negative', 0):.1%}"
+        )
+
+        if risk_flags:
+            st.error(
+                f"⚠️ Risk flags detected: {', '.join(risk_flags)}"
+            )
+
+        if pos_kw:
+            st.markdown(
+                "**Positive signals:** " +
+                " · ".join([f"`{k}`" for k in pos_kw])
+            )
+        if neg_kw:
+            st.markdown(
+                "**Negative signals:** " +
+                " · ".join([f"`{k}`" for k in neg_kw])
+            )
+
+        if sources:
+            st.caption(f"Sources: {' · '.join(sources)}")
+
+        st.markdown("**Recent headlines:**")
         for h in headlines:
-            st.write(f"- {h}")
+            text_lower = h.lower()
+            has_neg = any(w in text_lower for w in NEGATIVE_KEYWORDS[:10])
+            has_pos = any(w in text_lower for w in POSITIVE_KEYWORDS[:10])
+            icon = "🔴" if has_neg else "🟢" if has_pos else "⚪"
+            st.write(f"{icon} {h}")
 
         st.markdown("---")
         st.subheader("AI analysis")
@@ -445,8 +515,8 @@ with tab2:
                 signal=signal,
                 confidence=confidence,
                 sentiment=sentiment,
-                rsi=df["RSI"].iloc[-1],
-                macd=df["MACD"].iloc[-1],
+                rsi=float(df["RSI"].iloc[-1]),
+                macd=float(df["MACD"].iloc[-1]),
                 accuracy=accuracy,
                 buy_prob=buy_prob,
                 sell_prob=sell_prob,
@@ -510,9 +580,11 @@ with tab3:
                 )
                 st.plotly_chart(fig_f, use_container_width=True)
 
-                last_forecast = forecast["yhat"].iloc[-1]
-                last_actual = pf["y"].iloc[-1]
-                change_f = ((last_forecast - last_actual) / last_actual) * 100
+                last_forecast = float(forecast["yhat"].iloc[-1])
+                last_actual = float(pf["y"].iloc[-1])
+                change_f = (
+                    (last_forecast - last_actual) / last_actual * 100
+                )
                 f1, f2, f3 = st.columns(3)
                 f1.metric("Current price", f"₹{last_actual:,.2f}")
                 f2.metric("Forecast (30d)", f"₹{last_forecast:,.2f}")
@@ -559,27 +631,43 @@ with tab4:
                 df_p = add_indicators(df_p)
                 if df_p is None:
                     continue
-                current_p = df_p["Close"].iloc[-1]
-                invested = qty * avg_price if avg_price > 0 else qty * current_p
+                current_p = float(df_p["Close"].iloc[-1])
+                invested = (
+                    qty * avg_price if avg_price > 0
+                    else qty * current_p
+                )
                 current_val = qty * current_p
                 pnl = current_val - invested
-                pnl_pct = (pnl / invested * 100) if invested > 0 else 0
+                pnl_pct = (
+                    (pnl / invested * 100) if invested > 0 else 0
+                )
                 model_p, sc_p, f_p, acc_p = train_model(ticker_p)
-                sig_p, conf_p, _, _ = get_signal(model_p, sc_p, df_p, f_p)
+                sig_p, conf_p, _, _ = get_signal(
+                    model_p, sc_p, df_p, f_p
+                )
                 total_invested += invested
                 total_current += current_val
                 portfolio_data.append({
                     "Stock": ticker_p.replace(".NS", ""),
                     "Qty": qty,
-                    "Avg price": f"₹{avg_price:,.2f}" if avg_price > 0 else "N/A",
+                    "Avg price": (
+                        f"₹{avg_price:,.2f}"
+                        if avg_price > 0 else "N/A"
+                    ),
                     "Current": f"₹{current_p:,.2f}",
                     "Value": f"₹{current_val:,.2f}",
-                    "P&L": f"₹{pnl:+,.2f}" if avg_price > 0 else "N/A",
-                    "Return": f"{pnl_pct:+.1f}%" if avg_price > 0 else "N/A",
+                    "P&L": (
+                        f"₹{pnl:+,.2f}"
+                        if avg_price > 0 else "N/A"
+                    ),
+                    "Return": (
+                        f"{pnl_pct:+.1f}%"
+                        if avg_price > 0 else "N/A"
+                    ),
                     "Signal": sig_p,
                     "Confidence": f"{conf_p:.1%}"
                 })
-            except:
+            except Exception:
                 continue
 
         if portfolio_data:
@@ -589,8 +677,12 @@ with tab4:
                 if total_invested > 0 else 0
             )
             pc1, pc2, pc3 = st.columns(3)
-            pc1.metric("Total invested", f"₹{total_invested:,.2f}")
-            pc2.metric("Current value", f"₹{total_current:,.2f}")
+            pc1.metric(
+                "Total invested", f"₹{total_invested:,.2f}"
+            )
+            pc2.metric(
+                "Current value", f"₹{total_current:,.2f}"
+            )
             pc3.metric(
                 "Total P&L",
                 f"₹{total_pnl:+,.2f}",

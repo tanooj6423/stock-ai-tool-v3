@@ -17,40 +17,66 @@ def score_ml_signal(signal, confidence, buy_prob):
         return int(min(20, base + bonus))
     return 0
 
-def score_multiframe(df_daily, df_weekly):
+def score_multiframe(df_daily):
     score = 0
     try:
-        if df_daily is not None:
-            daily_trend = (df_daily["Close"].iloc[-1] >
-                          df_daily["SMA_50"].iloc[-1])
-            if daily_trend:
-                score = 8
-            if df_weekly is not None:
-                weekly_close = df_weekly["Close"].iloc[-1]
-                weekly_sma20 = df_weekly["Close"].rolling(20).mean().iloc[-1]
-                weekly_trend = weekly_close > weekly_sma20
-                if daily_trend and weekly_trend:
-                    score = 15
-                elif weekly_trend:
-                    score = 7
-    except:
+        if df_daily is None:
+            return 0
+        close = df_daily["Close"]
+        sma20 = close.rolling(20).mean()
+        sma50 = close.rolling(50).mean()
+        sma200 = close.rolling(200).mean()
+        current = close.iloc[-1]
+        above_sma20 = current > sma20.iloc[-1]
+        above_sma50 = current > sma50.iloc[-1]
+        above_sma200 = current > sma200.iloc[-1]
+        golden_cross = sma50.iloc[-1] > sma200.iloc[-1]
+        weekly_close = close.iloc[-1]
+        weekly_sma = close.tail(5).mean()
+        weekly_trend = weekly_close > weekly_sma
+
+        conditions = [
+            above_sma20, above_sma50,
+            above_sma200, golden_cross, weekly_trend
+        ]
+        met = sum(conditions)
+        if met == 5:
+            score = 15
+        elif met == 4:
+            score = 12
+        elif met == 3:
+            score = 8
+        elif met == 2:
+            score = 4
+        else:
+            score = 0
+    except Exception:
         pass
     return score
 
 def score_volume(df):
     try:
-        vol_ratio = df["Volume_ratio"].iloc[-1]
-        if vol_ratio >= 2.0:
-            return 10
-        elif vol_ratio >= 1.5:
-            return 8
-        elif vol_ratio >= 1.2:
-            return 5
-        elif vol_ratio >= 1.0:
-            return 3
-    except:
-        pass
-    return 0
+        vol_ratio = float(df["Volume_ratio"].iloc[-1])
+        vol_5d = df["Volume"].tail(5).mean()
+        vol_20d = df["Volume"].tail(20).mean()
+        vol_trend = vol_5d > vol_20d
+
+        if vol_ratio >= 1.8:
+            base = 10
+        elif vol_ratio >= 1.4:
+            base = 8
+        elif vol_ratio >= 1.1:
+            base = 6
+        elif vol_ratio >= 0.8:
+            base = 4
+        else:
+            base = 2
+
+        if vol_trend:
+            base = min(10, base + 1)
+        return base
+    except Exception:
+        return 3
 
 def score_market_regime(regime):
     if regime == "bull":
@@ -75,7 +101,7 @@ def score_relative_strength(rs):
             return 3
         else:
             return 0
-    except:
+    except Exception:
         return 5
 
 def score_sector_momentum(sector, sector_indices):
@@ -93,7 +119,7 @@ def score_sector_momentum(sector, sector_indices):
             return 4
         else:
             return 1
-    except:
+    except Exception:
         return 4
 
 def score_fundamentals(fundamentals):
@@ -107,6 +133,7 @@ def score_fundamentals(fundamentals):
                 score += 2
             elif pe <= 5:
                 score += 1
+
         rev_growth = fundamentals.get("Revenue Growth", "N/A")
         if rev_growth != "N/A" and isinstance(rev_growth, (int, float)):
             if rev_growth > 0.15:
@@ -115,88 +142,112 @@ def score_fundamentals(fundamentals):
                 score += 2
             elif rev_growth > 0:
                 score += 1
+
         de = fundamentals.get("Debt to Equity", "N/A")
         if de != "N/A" and isinstance(de, (int, float)):
             if de < 0.5:
                 score += 2
             elif de < 1.5:
                 score += 1
-    except:
+    except Exception:
         pass
     return min(8, score)
 
-def score_sentiment(sentiment, confidence):
+def score_sentiment(sentiment, confidence, trend, sentiment_score):
     try:
         if sentiment == "positive":
-            return min(8, int(confidence * 10))
+            base = min(6, int(confidence * 8))
         elif sentiment == "neutral":
-            return 4
+            base = 3
         else:
-            return 0
-    except:
-        return 4
+            base = 0
+
+        if trend == "improving":
+            base = min(8, base + 2)
+        elif trend == "deteriorating":
+            base = max(0, base - 2)
+
+        if sentiment_score > 0.3:
+            base = min(8, base + 1)
+
+        return base
+    except Exception:
+        return 3
 
 def score_fibonacci(df):
     try:
+        from data import get_fibonacci_levels
         levels = get_fibonacci_levels(df)
-        current = df["Close"].iloc[-1]
+        current = float(df["Close"].iloc[-1])
         for name, level in levels.items():
             if abs(current - level) / current < 0.02:
                 return 5
         return 2
-    except:
+    except Exception:
         return 2
 
 def score_institutional(ticker, df):
     try:
-        vol_trend = (df["Volume"].tail(5).mean() >
-                    df["Volume"].tail(20).mean())
-        price_trend = df["Close"].iloc[-1] > df["Close"].iloc[-5]
-        if vol_trend and price_trend:
+        vol_5d = df["Volume"].tail(5).mean()
+        vol_20d = df["Volume"].tail(20).mean()
+        vol_trend = vol_5d > vol_20d
+
+        price_5d = df["Close"].iloc[-1]
+        price_10d = df["Close"].iloc[-10] if len(df) > 10 else df["Close"].iloc[0]
+        price_trend = price_5d > price_10d
+
+        rsi = float(df["RSI"].iloc[-1])
+        rsi_healthy = 40 < rsi < 65
+
+        conditions = [vol_trend, price_trend, rsi_healthy]
+        met = sum(conditions)
+
+        if met == 3:
             return 10
-        elif vol_trend or price_trend:
-            return 5
+        elif met == 2:
+            return 7
+        elif met == 1:
+            return 4
         return 2
-    except:
+    except Exception:
         return 2
 
 def calculate_entry_targets(df, signal):
     try:
-        current_price = df["Close"].iloc[-1]
-        atr = df["ATR"].iloc[-1]
+        current_price = float(df["Close"].iloc[-1])
+        atr = float(df["ATR"].iloc[-1])
         support_levels, resistance_levels = get_support_resistance(df)
 
         if signal == "BUY":
             entry = current_price
-            stop_loss = (support_levels[0]
-                        if support_levels and
-                        (entry - support_levels[0]) > atr * 0.5
-                        else entry - 2 * atr)
+            stop_loss = (
+                support_levels[0]
+                if support_levels and
+                (entry - support_levels[0]) > atr * 0.5
+                else entry - 2 * atr
+            )
             risk = max(entry - stop_loss, atr)
 
-            valid_t1 = [r for r in resistance_levels
-                       if r > entry + risk]
-            valid_t2 = [r for r in resistance_levels
-                       if r > entry + risk * 2]
+            valid_t1 = [r for r in resistance_levels if r > entry + risk]
+            valid_t2 = [r for r in resistance_levels if r > entry + risk * 2]
 
             target1 = valid_t1[0] if valid_t1 else entry + 2 * risk
             target2 = valid_t2[0] if valid_t2 else entry + 3 * risk
 
             rr1 = round((target1 - entry) / risk, 2)
             rr2 = round((target2 - entry) / risk, 2)
-
         else:
             entry = current_price
-            stop_loss = (resistance_levels[0]
-                        if resistance_levels and
-                        (resistance_levels[0] - entry) > atr * 0.5
-                        else entry + 2 * atr)
+            stop_loss = (
+                resistance_levels[0]
+                if resistance_levels and
+                (resistance_levels[0] - entry) > atr * 0.5
+                else entry + 2 * atr
+            )
             risk = max(stop_loss - entry, atr)
 
-            valid_t1 = [s for s in support_levels
-                       if s < entry - risk]
-            valid_t2 = [s for s in support_levels
-                       if s < entry - risk * 2]
+            valid_t1 = [s for s in support_levels if s < entry - risk]
+            valid_t2 = [s for s in support_levels if s < entry - risk * 2]
 
             target1 = valid_t1[0] if valid_t1 else entry - 2 * risk
             target2 = valid_t2[0] if valid_t2 else entry - 3 * risk
@@ -213,9 +264,9 @@ def calculate_entry_targets(df, signal):
             "rr2": max(rr2, 2.0),
             "risk_amount": round(risk, 2)
         }
-    except:
-        price = df["Close"].iloc[-1]
-        atr = df["ATR"].iloc[-1] if "ATR" in df.columns else price * 0.02
+    except Exception:
+        price = float(df["Close"].iloc[-1])
+        atr = float(df["ATR"].iloc[-1]) if "ATR" in df.columns else price * 0.02
         return {
             "entry": round(price, 2),
             "stop_loss": round(price - 2 * atr, 2),
@@ -235,7 +286,7 @@ def calculate_position_size(capital, risk_pct, entry, stop_loss):
         shares = int(risk_amount / per_share_risk)
         total_cost = shares * entry
         return shares, round(total_cost, 2)
-    except:
+    except Exception:
         return 0, 0
 
 def run_full_scan(tickers, capital=50000, risk_pct=1.5,
@@ -261,39 +312,54 @@ def run_full_scan(tickers, capital=50000, risk_pct=1.5,
 
             fundamentals = get_fundamentals(ticker)
             sector = get_sector(ticker)
-            correlation = (get_nifty_correlation(df, nifty_df)
-                          if nifty_df is not None else None)
-            rs = (get_relative_strength(df, nifty_df)
-                 if nifty_df is not None else None)
-            sentiment, sent_conf, _, _ = get_news_sentiment(ticker)
+            correlation = (
+                get_nifty_correlation(df, nifty_df)
+                if nifty_df is not None else None
+            )
+            rs = (
+                get_relative_strength(df, nifty_df)
+                if nifty_df is not None else None
+            )
+
+            news_data = get_news_sentiment(ticker)
+            sentiment = news_data["sentiment"]
+            sent_conf = news_data["confidence"]
+            sentiment_score = news_data["sentiment_score"]
+            sentiment_trend = news_data["trend"]
+            risk_flags = news_data["risk_flags"]
+
+            if risk_flags:
+                continue
 
             model, scaler, features, accuracy = train_model_fast(ticker)
             if model is None:
                 continue
 
             signal, confidence, buy_prob, sell_prob = get_signal(
-                model, scaler, df, features)
+                model, scaler, df, features
+            )
 
             if signal != "BUY" or confidence < 0.60:
                 continue
 
-            rsi = df["RSI"].iloc[-1]
+            rsi = float(df["RSI"].iloc[-1])
             if rsi > 72 or rsi < 28:
                 continue
 
             s1 = score_ml_signal(signal, confidence, buy_prob)
-            s2 = score_multiframe(df, None)
+            s2 = score_multiframe(df)
             s3 = score_volume(df)
             s4 = score_market_regime(regime)
             s5 = score_relative_strength(rs)
             s6 = score_sector_momentum(sector, SECTOR_INDICES)
             s7 = score_fundamentals(fundamentals)
-            s8 = score_sentiment(sentiment, sent_conf)
+            s8 = score_sentiment(sentiment, sent_conf,
+                                 sentiment_trend, sentiment_score)
             s9 = score_fibonacci(df)
             s10 = score_institutional(ticker, df)
 
             total_score = int(s1 + s2 + s3 + s4 + s5 +
-                             s6 + s7 + s8 + s9 + s10)
+                              s6 + s7 + s8 + s9 + s10)
 
             min_threshold = 45 if regime in ["bear", "unknown"] else 55
             if total_score < min_threshold:
@@ -305,6 +371,11 @@ def run_full_scan(tickers, capital=50000, risk_pct=1.5,
                 targets["entry"], targets["stop_loss"]
             )
             risk_metrics = get_risk_metrics(df)
+
+            capital_note = ""
+            if shares == 0:
+                min_capital = targets["risk_amount"] * (100 / risk_pct)
+                capital_note = f"Min capital needed: ₹{min_capital:,.0f}"
 
             results.append({
                 "ticker": ticker,
@@ -326,8 +397,11 @@ def run_full_scan(tickers, capital=50000, risk_pct=1.5,
                 "risk_amount": targets["risk_amount"],
                 "shares": shares,
                 "position_cost": cost,
+                "capital_note": capital_note,
                 "sentiment": sentiment,
                 "sent_conf": round(sent_conf, 4),
+                "sentiment_score": sentiment_score,
+                "sentiment_trend": sentiment_trend,
                 "correlation": correlation,
                 "relative_strength": rs,
                 "market_regime": regime,

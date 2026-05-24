@@ -17,24 +17,459 @@ from sentiment import (get_news_sentiment, NEGATIVE_KEYWORDS,
 from ai_explain import explain_signal, generate_pick_thesis
 from screener_engine import run_full_scan, calculate_position_size
 from universe import ALL_STOCKS, NIFTY_50, COMMODITIES, get_sector
+from earnings import get_earnings_status, get_nse_earnings_calendar
 
 load_dotenv()
 
 st.set_page_config(
-    page_title="NSE Stock Intelligence v3",
+    page_title="Equitex Intelligence",
     layout="wide",
-    page_icon="📈"
+    page_icon="📈",
+    initial_sidebar_state="expanded"
 )
 
-st.markdown("""
+THEMES = {
+    "Bloomberg Dark": {
+        "bg": "#060608",
+        "bg2": "#0d0d12",
+        "card": "#12121a",
+        "border": "#1e1e2e",
+        "green": "#00d4aa",
+        "red": "#ff4757",
+        "blue": "#5352ed",
+        "gold": "#ffd32a",
+        "text": "#e8e8f0",
+        "text2": "#8888a8",
+        "accent": "#00d4aa",
+    },
+    "Midnight Navy": {
+        "bg": "#030711",
+        "bg2": "#080f1f",
+        "card": "#0d1628",
+        "border": "#1a2540",
+        "green": "#00e5a0",
+        "red": "#ff3860",
+        "blue": "#4facfe",
+        "gold": "#f9a825",
+        "text": "#e2e8f0",
+        "text2": "#718096",
+        "accent": "#4facfe",
+    },
+    "Professional Light": {
+        "bg": "#f8fafc",
+        "bg2": "#ffffff",
+        "card": "#ffffff",
+        "border": "#e2e8f0",
+        "green": "#059669",
+        "red": "#dc2626",
+        "blue": "#2563eb",
+        "gold": "#d97706",
+        "text": "#0f172a",
+        "text2": "#64748b",
+        "accent": "#2563eb",
+    }
+}
+
+if "theme" not in st.session_state:
+    st.session_state.theme = "Bloomberg Dark"
+
+t = THEMES[st.session_state.theme]
+
+st.markdown(f"""
 <style>
-[data-testid="stMetricValue"] { font-size: 1.3rem; font-weight: 600; }
-[data-testid="stMetricLabel"] { font-size: 0.75rem; }
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+html, body, [class*="css"] {{
+    font-family: 'Inter', sans-serif;
+}}
+
+.stApp {{
+    background-color: {t['bg']};
+    color: {t['text']};
+}}
+
+section[data-testid="stSidebar"] {{
+    background-color: {t['bg2']};
+    border-right: 1px solid {t['border']};
+}}
+
+section[data-testid="stSidebar"] * {{
+    color: {t['text']} !important;
+}}
+
+.main-header {{
+    padding: 24px 0 8px 0;
+    border-bottom: 1px solid {t['border']};
+    margin-bottom: 24px;
+}}
+
+.main-title {{
+    font-size: 28px;
+    font-weight: 700;
+    color: {t['text']};
+    letter-spacing: -0.5px;
+    margin: 0;
+}}
+
+.main-subtitle {{
+    font-size: 13px;
+    color: {t['text2']};
+    margin-top: 4px;
+}}
+
+.accent-line {{
+    width: 48px;
+    height: 3px;
+    background: linear-gradient(90deg, {t['accent']}, transparent);
+    margin: 8px 0 0 0;
+    border-radius: 2px;
+}}
+
+.pick-card {{
+    background: {t['card']};
+    border: 1px solid {t['border']};
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 16px;
+    position: relative;
+}}
+
+.pick-card-header {{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+}}
+
+.pick-rank {{
+    font-size: 11px;
+    font-weight: 600;
+    color: {t['text2']};
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}}
+
+.pick-ticker {{
+    font-size: 22px;
+    font-weight: 700;
+    color: {t['text']};
+    font-family: 'JetBrains Mono', monospace;
+}}
+
+.pick-price {{
+    font-size: 14px;
+    color: {t['text2']};
+    margin-top: 2px;
+}}
+
+.signal-badge-buy {{
+    background: {t['green']}22;
+    color: {t['green']};
+    border: 1px solid {t['green']}44;
+    padding: 4px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    display: inline-block;
+}}
+
+.signal-badge-sell {{
+    background: {t['red']}22;
+    color: {t['red']};
+    border: 1px solid {t['red']}44;
+    padding: 4px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    display: inline-block;
+}}
+
+.score-badge {{
+    background: {t['accent']}22;
+    color: {t['accent']};
+    border: 1px solid {t['accent']}44;
+    padding: 4px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+}}
+
+.metric-card {{
+    background: {t['bg2']};
+    border: 1px solid {t['border']};
+    border-radius: 8px;
+    padding: 12px 16px;
+    text-align: center;
+}}
+
+.metric-label {{
+    font-size: 11px;
+    color: {t['text2']};
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+}}
+
+.metric-value {{
+    font-size: 18px;
+    font-weight: 600;
+    color: {t['text']};
+    font-family: 'JetBrains Mono', monospace;
+}}
+
+.metric-value-green {{
+    font-size: 18px;
+    font-weight: 600;
+    color: {t['green']};
+    font-family: 'JetBrains Mono', monospace;
+}}
+
+.metric-value-red {{
+    font-size: 18px;
+    font-weight: 600;
+    color: {t['red']};
+    font-family: 'JetBrains Mono', monospace;
+}}
+
+.score-bar-container {{
+    background: {t['border']};
+    border-radius: 4px;
+    height: 6px;
+    margin-top: 8px;
+    overflow: hidden;
+}}
+
+.score-bar-fill {{
+    height: 6px;
+    border-radius: 4px;
+    background: linear-gradient(90deg, {t['accent']}, {t['green']});
+}}
+
+.section-header {{
+    font-size: 14px;
+    font-weight: 600;
+    color: {t['text2']};
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin: 24px 0 12px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}}
+
+.section-header::after {{
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: {t['border']};
+}}
+
+.thesis-card {{
+    background: {t['accent']}0d;
+    border: 1px solid {t['accent']}33;
+    border-left: 3px solid {t['accent']};
+    border-radius: 8px;
+    padding: 16px;
+    font-size: 14px;
+    color: {t['text']};
+    line-height: 1.7;
+}}
+
+.regime-bull {{
+    color: {t['green']};
+    font-weight: 600;
+}}
+
+.regime-bear {{
+    color: {t['red']};
+    font-weight: 600;
+}}
+
+.regime-sideways {{
+    color: {t['gold']};
+    font-weight: 600;
+}}
+
+.regime-unknown {{
+    color: {t['text2']};
+    font-weight: 600;
+}}
+
+.headline-pos {{
+    color: {t['green']};
+    font-size: 13px;
+    padding: 4px 0;
+    border-bottom: 1px solid {t['border']};
+}}
+
+.headline-neg {{
+    color: {t['red']};
+    font-size: 13px;
+    padding: 4px 0;
+    border-bottom: 1px solid {t['border']};
+}}
+
+.headline-neu {{
+    color: {t['text2']};
+    font-size: 13px;
+    padding: 4px 0;
+    border-bottom: 1px solid {t['border']};
+}}
+
+.divider {{
+    height: 1px;
+    background: {t['border']};
+    margin: 24px 0;
+}}
+
+[data-testid="stMetricValue"] {{
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.2rem !important;
+    font-weight: 600;
+    color: {t['text']} !important;
+}}
+
+[data-testid="stMetricLabel"] {{
+    font-size: 0.72rem !important;
+    color: {t['text2']} !important;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}}
+
+[data-testid="stMetricDelta"] {{
+    font-size: 0.8rem !important;
+}}
+
+.stTabs [data-baseweb="tab-list"] {{
+    background-color: {t['bg2']};
+    border-radius: 8px;
+    padding: 4px;
+    gap: 2px;
+    border: 1px solid {t['border']};
+}}
+
+.stTabs [data-baseweb="tab"] {{
+    background-color: transparent;
+    border-radius: 6px;
+    color: {t['text2']};
+    font-size: 13px;
+    font-weight: 500;
+    padding: 8px 16px;
+}}
+
+.stTabs [aria-selected="true"] {{
+    background-color: {t['accent']}22 !important;
+    color: {t['accent']} !important;
+    border: 1px solid {t['accent']}44;
+}}
+
+.stExpander {{
+    background: {t['card']};
+    border: 1px solid {t['border']};
+    border-radius: 10px;
+    margin-bottom: 12px;
+}}
+
+.stExpander > div > div > div > div {{
+    font-size: 14px;
+    font-weight: 500;
+    color: {t['text']};
+}}
+
+.stButton button {{
+    background: {t['accent']};
+    color: {t['bg']};
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 13px;
+    padding: 8px 20px;
+    transition: opacity 0.2s;
+}}
+
+.stButton button:hover {{
+    opacity: 0.85;
+}}
+
+.stSelectbox > div > div {{
+    background: {t['bg2']};
+    border: 1px solid {t['border']};
+    border-radius: 8px;
+    color: {t['text']};
+}}
+
+.stTextInput > div > div > input {{
+    background: {t['bg2']};
+    border: 1px solid {t['border']};
+    border-radius: 8px;
+    color: {t['text']};
+}}
+
+.stProgress > div > div > div {{
+    background: {t['accent']};
+    border-radius: 4px;
+}}
+
+.stProgress > div > div {{
+    background: {t['border']};
+    border-radius: 4px;
+}}
+
+.sidebar-logo {{
+    font-size: 20px;
+    font-weight: 700;
+    color: {t['accent']};
+    letter-spacing: -0.5px;
+    padding: 16px 0 8px 0;
+    border-bottom: 1px solid {t['border']};
+    margin-bottom: 16px;
+}}
+
+.sidebar-section {{
+    font-size: 10px;
+    font-weight: 600;
+    color: {t['text2']};
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin: 16px 0 8px 0;
+}}
+
+.tag {{
+    display: inline-block;
+    background: {t['bg']};
+    border: 1px solid {t['border']};
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 11px;
+    color: {t['text2']};
+    margin: 2px;
+    font-family: 'JetBrains Mono', monospace;
+}}
+
+.status-bar {{
+    background: {t['card']};
+    border: 1px solid {t['border']};
+    border-radius: 8px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 16px;
+    font-size: 13px;
+}}
+
 </style>
 """, unsafe_allow_html=True)
 
-st.title("📈 NSE Stock Intelligence Platform v3")
-st.caption("Professional-grade AI equity analysis. For informational purposes only. Not financial advice.")
+st.markdown(f"""
+<div class="main-header">
+    <p class="main-title">📈 Equitex Intelligence</p>
+    <p class="main-subtitle">Professional-grade AI equity analysis for Indian markets · Not financial advice</p>
+    <div class="accent-line"></div>
+</div>
+""", unsafe_allow_html=True)
 
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "🎯 Daily Picks",
@@ -45,7 +480,19 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
 ])
 
 with tab5:
-    st.subheader("Your settings")
+    st.markdown('<div class="section-header">Display</div>',
+                unsafe_allow_html=True)
+    theme_choice = st.selectbox(
+        "Theme",
+        list(THEMES.keys()),
+        index=list(THEMES.keys()).index(st.session_state.theme)
+    )
+    if theme_choice != st.session_state.theme:
+        st.session_state.theme = theme_choice
+        st.rerun()
+
+    st.markdown('<div class="section-header">Trading parameters</div>',
+                unsafe_allow_html=True)
     capital = st.number_input(
         "Trading capital (₹)",
         min_value=10000, max_value=10000000,
@@ -56,8 +503,11 @@ with tab5:
         min_value=0.5, max_value=3.0,
         value=1.5, step=0.25
     )
+
+    st.markdown('<div class="section-header">Scan settings</div>',
+                unsafe_allow_html=True)
     min_score = st.slider(
-        "Minimum score to show",
+        "Minimum composite score",
         min_value=40, max_value=85,
         value=55, step=5
     )
@@ -68,15 +518,21 @@ with tab5:
          "Full universe (150 stocks)"],
         index=1
     )
-    st.caption("Settings are saved for this session.")
 
 with tab1:
-    st.subheader("🎯 Daily top picks — AI screened")
-    st.caption("10-layer composite scoring. Risk flags auto-excluded. Cached 6 hours.")
+    st.sidebar.markdown(
+        f'<div class="sidebar-logo">Equitex v3</div>',
+        unsafe_allow_html=True
+    )
+    st.sidebar.markdown(
+        f'<div class="sidebar-section">Stock selection</div>',
+        unsafe_allow_html=True
+    )
 
-    col1, col2 = st.columns([3, 1])
-    with col2:
-        run_scan = st.button("🔄 Run fresh scan", type="primary")
+    mode = st.sidebar.radio(
+        "", ["Popular stocks", "Search any NSE stock"],
+        label_visibility="collapsed"
+    )
 
     if scan_universe == "Nifty 50 only":
         scan_tickers = NIFTY_50
@@ -85,6 +541,15 @@ with tab1:
         scan_tickers = NIFTY_50 + NIFTY_NEXT_50
     else:
         scan_tickers = ALL_STOCKS
+
+    col_h, col_btn = st.columns([5, 1])
+    with col_h:
+        st.markdown(
+            '<div class="section-header">AI screened daily picks</div>',
+            unsafe_allow_html=True
+        )
+    with col_btn:
+        run_scan = st.button("🔄 Refresh", type="primary")
 
     progress_bar = st.progress(0)
     status_text = st.empty()
@@ -99,11 +564,17 @@ with tab1:
         mins = remaining // 60
         secs = remaining % 60
         progress_bar.progress(pct)
-        status_text.text(
-            f"Scanning {current_ticker.replace('.NS', '')}... "
-            f"({current}/{total})"
+        status_text.markdown(
+            f'<span style="color:{t["text2"]};font-size:13px;">'
+            f'Scanning {current_ticker.replace(".NS", "")} '
+            f'({current}/{total})</span>',
+            unsafe_allow_html=True
         )
-        time_text.text(f"Estimated time remaining: {mins}m {secs}s")
+        time_text.markdown(
+            f'<span style="color:{t["text2"]};font-size:12px;">'
+            f'Est. remaining: {mins}m {secs}s</span>',
+            unsafe_allow_html=True
+        )
 
     picks, regime = run_full_scan(
         tuple(scan_tickers),
@@ -113,47 +584,128 @@ with tab1:
     )
 
     progress_bar.progress(100)
-    status_text.text(f"✅ Scan complete — {len(picks)} picks found")
+    status_text.empty()
     time_text.empty()
 
-    regime_color = (
-        "green" if regime == "bull"
-        else "red" if regime == "bear"
-        else "orange"
-    )
-    st.markdown(
-        f"**Market regime:** :{regime_color}[{regime.upper()}] | "
-        f"**Stocks scanned:** {len(scan_tickers)} | "
-        f"**Top picks found:** {len(picks)}"
-    )
+    regime_class = f"regime-{regime}"
+    regime_icons = {
+        "bull": "🟢", "bear": "🔴",
+        "sideways": "🟡", "unknown": "⚪"
+    }
+    regime_icon = regime_icons.get(regime, "⚪")
+
+    st.markdown(f"""
+    <div style="display:flex;gap:24px;align-items:center;
+    background:{t['card']};border:1px solid {t['border']};
+    border-radius:8px;padding:12px 16px;margin-bottom:20px;
+    font-size:13px;">
+        <span>
+            <span style="color:{t['text2']}">Market regime</span>
+            &nbsp;
+            <span class="{regime_class}">{regime_icon} {regime.upper()}</span>
+        </span>
+        <span style="color:{t['border']}">|</span>
+        <span style="color:{t['text2']}">
+            Stocks scanned: 
+            <span style="color:{t['text']};font-weight:600;">
+                {len(scan_tickers)}
+            </span>
+        </span>
+        <span style="color:{t['border']}">|</span>
+        <span style="color:{t['text2']}">
+            Picks found: 
+            <span style="color:{t['accent']};font-weight:600;">
+                {len(picks)}
+            </span>
+        </span>
+        <span style="color:{t['border']}">|</span>
+        <span style="color:{t['text2']}">
+            10-layer composite scoring
+        </span>
+    </div>
+    """, unsafe_allow_html=True)
 
     if not picks:
-        st.warning(
-            "No stocks passed all screening criteria today. "
-            "Market conditions may not be favourable for new entries."
-        )
+        st.markdown(f"""
+        <div style="background:{t['card']};border:1px solid {t['border']};
+        border-radius:10px;padding:32px;text-align:center;color:{t['text2']};">
+            <div style="font-size:32px;margin-bottom:12px;">🔍</div>
+            <div style="font-size:16px;font-weight:600;
+            color:{t['text']};margin-bottom:8px;">
+                No picks today
+            </div>
+            <div style="font-size:13px;">
+                No stocks passed all screening criteria. 
+                Market conditions may not be favourable 
+                for new entries.
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
     else:
         for i, pick in enumerate(picks):
             score = pick["score"]
+            score_pct = int((score / 100) * 100)
+            signal = pick["signal"]
+            badge_class = (
+                "signal-badge-buy" if signal == "BUY"
+                else "signal-badge-sell"
+            )
             trend_icon = (
                 "📈" if pick.get("sentiment_trend") == "improving"
-                else "📉" if pick.get("sentiment_trend") == "deteriorating"
+                else "📉"
+                if pick.get("sentiment_trend") == "deteriorating"
                 else "➡️"
             )
+            earnings_label = ""
+            if pick.get("earnings_message"):
+                earnings_label = (
+                    f" &nbsp;·&nbsp; 📅 {pick['earnings_message']}"
+                )
+
             with st.expander(
-                f"#{i+1} {pick['ticker'].replace('.NS', '')} — "
-                f"Score: {score}/100 | "
-                f"{pick['signal']} {pick['confidence']:.1%} | "
-                f"₹{pick['price']:,.2f} | "
-                f"Sentiment: {trend_icon}",
+                f"#{i+1}  {pick['ticker'].replace('.NS', '')}  "
+                f"·  {signal}  {pick['confidence']:.1%}  "
+                f"·  Score {score}/100  "
+                f"·  ₹{pick['price']:,.2f}",
                 expanded=(i < 3)
             ):
+                st.markdown(f"""
+                <div style="display:flex;align-items:center;
+                gap:12px;margin-bottom:16px;flex-wrap:wrap;">
+                    <span class="{badge_class}">{signal}</span>
+                    <span class="score-badge">{score}/100</span>
+                    <span style="color:{t['text2']};font-size:13px;">
+                        {pick['sector']} · 
+                        Confidence {pick['confidence']:.1%} · 
+                        Sentiment {trend_icon}
+                        {earnings_label}
+                    </span>
+                </div>
+                <div class="score-bar-container">
+                    <div class="score-bar-fill" 
+                    style="width:{score_pct}%"></div>
+                </div>
+                """, unsafe_allow_html=True)
+
+                if pick.get("earnings_message"):
+                    if pick.get("earnings_risk") == "medium":
+                        st.warning(
+                            f"⚠️ {pick['earnings_message']} — "
+                            f"Consider reducing position size."
+                        )
+                    elif pick.get("earnings_risk") == "low":
+                        st.info(f"📅 {pick['earnings_message']}")
+
+                st.markdown(
+                    '<div class="section-header">Trade levels</div>',
+                    unsafe_allow_html=True
+                )
                 c1, c2, c3, c4, c5, c6 = st.columns(6)
                 c1.metric("Entry", f"₹{pick['entry']:,.2f}")
                 c2.metric("Stop loss", f"₹{pick['stop_loss']:,.2f}")
                 c3.metric("Target 1", f"₹{pick['target1']:,.2f}")
                 c4.metric("Target 2", f"₹{pick['target2']:,.2f}")
-                c5.metric("R/R ratio", f"1:{pick['rr1']:.1f}")
+                c5.metric("R/R", f"1:{pick['rr1']:.1f}")
                 if pick["shares"] > 0:
                     c6.metric("Shares", f"{pick['shares']}")
                 else:
@@ -161,25 +713,42 @@ with tab1:
                     if pick.get("capital_note"):
                         st.caption(f"⚠️ {pick['capital_note']}")
 
+                st.markdown(
+                    '<div class="section-header">Indicators</div>',
+                    unsafe_allow_html=True
+                )
                 m1, m2, m3, m4, m5, m6 = st.columns(6)
                 m1.metric("RSI", f"{pick['rsi']}")
-                m2.metric("Confidence", f"{pick['confidence']:.1%}")
+                m2.metric(
+                    "Confidence", f"{pick['confidence']:.1%}"
+                )
                 m3.metric("Buy prob", f"{pick['buy_prob']:.1%}")
                 m4.metric(
                     "Sentiment",
-                    f"{pick['sentiment'].capitalize()} "
-                    f"({pick.get('sentiment_score', 0):+.2f})"
+                    f"{pick['sentiment'].capitalize()}"
                 )
-                m5.metric("Sector", pick['sector'])
-                m6.metric("Sharpe", f"{pick['sharpe']}")
+                m5.metric("Sharpe", f"{pick['sharpe']}")
+                m6.metric(
+                    "Max DD", f"{pick['max_drawdown']}"
+                )
 
-                st.markdown("**Score breakdown:**")
+                st.markdown(
+                    '<div class="section-header">'
+                    'Score breakdown</div>',
+                    unsafe_allow_html=True
+                )
                 breakdown = pick["score_breakdown"]
                 cols = st.columns(len(breakdown))
-                for j, (layer, pts) in enumerate(breakdown.items()):
+                for j, (layer, pts) in enumerate(
+                    breakdown.items()
+                ):
                     cols[j].metric(layer, pts)
 
-                st.markdown("**AI trade thesis:**")
+                st.markdown(
+                    '<div class="section-header">'
+                    'AI trade thesis</div>',
+                    unsafe_allow_html=True
+                )
                 with st.spinner("Generating thesis..."):
                     thesis = generate_pick_thesis(
                         ticker=pick["ticker"],
@@ -197,37 +766,45 @@ with tab1:
                         market_regime=pick["market_regime"],
                         relative_strength=pick["relative_strength"]
                     )
-                st.info(thesis)
+                st.markdown(
+                    f'<div class="thesis-card">{thesis}</div>',
+                    unsafe_allow_html=True
+                )
 
                 if pick["shares"] > 0 and pick["position_cost"] > 0:
-                    st.caption(
-                        f"Position: {pick['shares']} shares | "
-                        f"Cost: ₹{pick['position_cost']:,.2f} | "
-                        f"Max loss: ₹{pick['risk_amount'] * pick['shares']:,.2f}"
+                    st.markdown(
+                        f'<div style="margin-top:12px;font-size:12px;'
+                        f'color:{t["text2"]};">'
+                        f'Position: {pick["shares"]} shares &nbsp;·&nbsp; '
+                        f'Cost: ₹{pick["position_cost"]:,.2f} '
+                        f'&nbsp;·&nbsp; '
+                        f'Max loss: ₹'
+                        f'{pick["risk_amount"] * pick["shares"]:,.2f}'
+                        f'</div>',
+                        unsafe_allow_html=True
                     )
 
 with tab2:
-    st.sidebar.markdown("## Stock selection")
-    mode = st.sidebar.radio(
-        "", ["Popular stocks", "Search any NSE stock"],
-        label_visibility="collapsed"
+    st.sidebar.markdown(
+        f'<div class="sidebar-section">Stock selection</div>',
+        unsafe_allow_html=True
     )
     if mode == "Popular stocks":
         ticker = st.sidebar.selectbox("Select stock", NIFTY_50)
     else:
         raw = st.sidebar.text_input(
             "Enter NSE symbol",
-            placeholder="e.g. ZOMATO, IRFC, MOTHERSON"
+            placeholder="e.g. ZOMATO, IRFC"
         )
         if raw:
             with st.sidebar:
                 with st.spinner("Validating..."):
                     result = validate_ticker(raw)
             if result:
-                st.sidebar.success(f"Found: {result}")
+                st.sidebar.success(f"✓ Found: {result}")
                 ticker = result
             else:
-                st.sidebar.error("Symbol not found.")
+                st.sidebar.error("Symbol not found")
                 ticker = NIFTY_50[0]
         else:
             ticker = NIFTY_50[0]
@@ -262,74 +839,141 @@ with tab2:
         prev = float(df["Close"].iloc[-2])
         change = ((price - prev) / prev) * 100
         sector = get_sector(ticker)
+        change_color = t["green"] if change >= 0 else t["red"]
+        change_arrow = "▲" if change >= 0 else "▼"
 
-        st.markdown(f"### {ticker.replace('.NS', '')} — ₹{price:,.2f}")
-        st.caption(
-            f"Sector: {fundamentals.get('Sector', sector)} | "
-            f"Industry: {fundamentals.get('Industry', 'N/A')} | "
-            f"Market regime: {regime.upper()}"
-        )
+        st.markdown(f"""
+        <div style="margin-bottom:20px;">
+            <div style="display:flex;align-items:baseline;
+            gap:12px;flex-wrap:wrap;">
+                <span style="font-size:28px;font-weight:700;
+                color:{t['text']};font-family:'JetBrains Mono',
+                monospace;">
+                    {ticker.replace('.NS', '')}
+                </span>
+                <span style="font-size:24px;font-weight:600;
+                color:{t['text']};font-family:'JetBrains Mono',
+                monospace;">
+                    ₹{price:,.2f}
+                </span>
+                <span style="font-size:16px;font-weight:500;
+                color:{change_color};">
+                    {change_arrow} {abs(change):.2f}%
+                </span>
+            </div>
+            <div style="font-size:13px;color:{t['text2']};
+            margin-top:4px;">
+                {fundamentals.get('Sector', sector)} · 
+                {fundamentals.get('Industry', 'N/A')} · 
+                Regime: 
+                <span class="regime-{regime}">
+                    {regime.upper()}
+                </span>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
         c1, c2, c3, c4, c5, c6 = st.columns(6)
         c1.metric("Price", f"₹{price:,.2f}", f"{change:+.2f}%")
         c2.metric("RSI", f"{df['RSI'].iloc[-1]:.1f}")
         c3.metric("MACD", f"{df['MACD'].iloc[-1]:.2f}")
-        c4.metric("52W High", f"₹{fundamentals.get('52W High', 'N/A')}")
-        c5.metric("52W Low", f"₹{fundamentals.get('52W Low', 'N/A')}")
-        c6.metric("Nifty Corr", f"{correlation}" if correlation else "N/A")
+        c4.metric(
+            "52W High",
+            f"₹{fundamentals.get('52W High', 'N/A')}"
+        )
+        c5.metric(
+            "52W Low",
+            f"₹{fundamentals.get('52W Low', 'N/A')}"
+        )
+        c6.metric(
+            "Nifty Corr",
+            f"{correlation}" if correlation else "N/A"
+        )
 
-        st.markdown("---")
+        st.markdown('<div class="divider"></div>',
+                    unsafe_allow_html=True)
 
         fig = go.Figure()
         fig.add_trace(go.Candlestick(
             x=df.index, open=df["Open"], high=df["High"],
-            low=df["Low"], close=df["Close"], name="Price"
+            low=df["Low"], close=df["Close"], name="Price",
+            increasing_line_color=t["green"],
+            decreasing_line_color=t["red"]
         ))
         fig.add_trace(go.Scatter(
             x=df.index, y=df["SMA_20"], name="SMA 20",
-            line=dict(color="orange", width=1)
+            line=dict(color="#f0a500", width=1)
         ))
         fig.add_trace(go.Scatter(
             x=df.index, y=df["SMA_50"], name="SMA 50",
-            line=dict(color="blue", width=1)
+            line=dict(color=t["blue"], width=1)
         ))
         fig.add_trace(go.Scatter(
             x=df.index, y=df["SMA_200"], name="SMA 200",
-            line=dict(color="purple", width=1)
+            line=dict(color="#9b59b6", width=1)
         ))
         fig.add_trace(go.Scatter(
             x=df.index, y=df["BB_upper"], name="BB Upper",
-            line=dict(color="gray", width=1, dash="dash")
+            line=dict(color=t["text2"], width=1, dash="dash")
         ))
         fig.add_trace(go.Scatter(
             x=df.index, y=df["BB_lower"], name="BB Lower",
-            line=dict(color="gray", width=1, dash="dash"),
-            fill="tonexty", fillcolor="rgba(128,128,128,0.1)"
+            line=dict(color=t["text2"], width=1, dash="dash"),
+            fill="tonexty",
+            fillcolor=f"{t['text2']}11"
         ))
         for r in resistance_levels:
             fig.add_hline(
-                y=r, line_dash="dot", line_color="red",
-                annotation_text=f"R: ₹{r:,.0f}",
-                annotation_position="right"
+                y=r, line_dash="dot",
+                line_color=t["red"], line_width=1,
+                annotation_text=f"R ₹{r:,.0f}",
+                annotation_position="right",
+                annotation_font_color=t["red"],
+                annotation_font_size=11
             )
         for s in support_levels:
             fig.add_hline(
-                y=s, line_dash="dot", line_color="green",
-                annotation_text=f"S: ₹{s:,.0f}",
-                annotation_position="right"
+                y=s, line_dash="dot",
+                line_color=t["green"], line_width=1,
+                annotation_text=f"S ₹{s:,.0f}",
+                annotation_position="right",
+                annotation_font_color=t["green"],
+                annotation_font_size=11
             )
         fib_levels = get_fibonacci_levels(df)
         for name, level in fib_levels.items():
             fig.add_hline(
                 y=level, line_dash="dot",
-                line_color="rgba(255,215,0,0.4)",
+                line_color=t["gold"], line_width=0.5,
                 annotation_text=f"Fib {name}",
-                annotation_position="left"
+                annotation_position="left",
+                annotation_font_color=t["gold"],
+                annotation_font_size=10
             )
         fig.update_layout(
-            title=f"{ticker} — Price chart",
+            title=dict(
+                text=f"{ticker} — Price chart",
+                font=dict(color=t["text"], size=14)
+            ),
             xaxis_rangeslider_visible=False,
-            height=550
+            height=520,
+            paper_bgcolor=t["card"],
+            plot_bgcolor=t["card"],
+            font=dict(color=t["text2"], family="Inter"),
+            xaxis=dict(
+                gridcolor=t["border"],
+                showgrid=True
+            ),
+            yaxis=dict(
+                gridcolor=t["border"],
+                showgrid=True
+            ),
+            legend=dict(
+                bgcolor=t["bg2"],
+                bordercolor=t["border"],
+                borderwidth=1,
+                font=dict(size=11)
+            )
         )
         st.plotly_chart(fig, use_container_width=True)
 
@@ -338,18 +982,38 @@ with tab2:
             fig_rsi = go.Figure()
             fig_rsi.add_trace(go.Scatter(
                 x=df.index, y=df["RSI"],
-                line=dict(color="purple"), name="RSI"
+                line=dict(color=t["accent"], width=1.5),
+                fill="tozeroy",
+                fillcolor=f"{t['accent']}15",
+                name="RSI"
             ))
             fig_rsi.add_hline(
-                y=70, line_dash="dash", line_color="red",
-                annotation_text="Overbought"
+                y=70, line_dash="dash",
+                line_color=t["red"], line_width=1,
+                annotation_text="Overbought",
+                annotation_font_color=t["red"],
+                annotation_font_size=10
             )
             fig_rsi.add_hline(
-                y=30, line_dash="dash", line_color="green",
-                annotation_text="Oversold"
+                y=30, line_dash="dash",
+                line_color=t["green"], line_width=1,
+                annotation_text="Oversold",
+                annotation_font_color=t["green"],
+                annotation_font_size=10
             )
             fig_rsi.update_layout(
-                title="RSI", height=250, showlegend=False
+                title=dict(
+                    text="RSI (14)",
+                    font=dict(color=t["text"], size=13)
+                ),
+                height=220,
+                showlegend=False,
+                paper_bgcolor=t["card"],
+                plot_bgcolor=t["card"],
+                font=dict(color=t["text2"]),
+                xaxis=dict(gridcolor=t["border"]),
+                yaxis=dict(gridcolor=t["border"],
+                           range=[0, 100])
             )
             st.plotly_chart(fig_rsi, use_container_width=True)
 
@@ -357,43 +1021,101 @@ with tab2:
             fig_macd = go.Figure()
             fig_macd.add_trace(go.Scatter(
                 x=df.index, y=df["MACD"],
-                name="MACD", line=dict(color="blue")
+                name="MACD",
+                line=dict(color=t["blue"], width=1.5)
             ))
             fig_macd.add_trace(go.Scatter(
                 x=df.index, y=df["MACD_signal"],
-                name="Signal", line=dict(color="orange")
+                name="Signal",
+                line=dict(color=t["gold"], width=1.5)
             ))
             fig_macd.add_trace(go.Bar(
                 x=df.index, y=df["MACD_hist"],
                 name="Histogram",
                 marker_color=[
-                    "green" if v >= 0 else "red"
+                    t["green"] if v >= 0 else t["red"]
                     for v in df["MACD_hist"]
-                ]
+                ],
+                opacity=0.6
             ))
-            fig_macd.update_layout(title="MACD", height=250)
+            fig_macd.update_layout(
+                title=dict(
+                    text="MACD",
+                    font=dict(color=t["text"], size=13)
+                ),
+                height=220,
+                paper_bgcolor=t["card"],
+                plot_bgcolor=t["card"],
+                font=dict(color=t["text2"]),
+                xaxis=dict(gridcolor=t["border"]),
+                yaxis=dict(gridcolor=t["border"]),
+                legend=dict(
+                    bgcolor="transparent",
+                    font=dict(size=10)
+                )
+            )
             st.plotly_chart(fig_macd, use_container_width=True)
 
         fig_vol = go.Figure()
         fig_vol.add_trace(go.Bar(
             x=df.index, y=df["Volume"],
             marker_color=[
-                "green" if df["Close"].iloc[i] >= df["Open"].iloc[i]
-                else "red" for i in range(len(df))
+                t["green"]
+                if df["Close"].iloc[i] >= df["Open"].iloc[i]
+                else t["red"]
+                for i in range(len(df))
             ],
+            opacity=0.7,
             name="Volume"
         ))
         fig_vol.add_trace(go.Scatter(
             x=df.index, y=df["Volume_SMA"],
-            name="Vol SMA 20", line=dict(color="white")
+            name="SMA 20",
+            line=dict(color=t["gold"], width=1.5)
         ))
         fig_vol.update_layout(
-            title="Volume", height=200, showlegend=False
+            title=dict(
+                text="Volume",
+                font=dict(color=t["text"], size=13)
+            ),
+            height=180,
+            showlegend=False,
+            paper_bgcolor=t["card"],
+            plot_bgcolor=t["card"],
+            font=dict(color=t["text2"]),
+            xaxis=dict(gridcolor=t["border"]),
+            yaxis=dict(gridcolor=t["border"])
         )
         st.plotly_chart(fig_vol, use_container_width=True)
 
-        st.markdown("---")
-        st.subheader("Model signal")
+        st.markdown(
+            '<div class="section-header">Earnings calendar</div>',
+            unsafe_allow_html=True
+        )
+        earnings_map = get_nse_earnings_calendar()
+        earnings = get_earnings_status(ticker, earnings_map)
+        if earnings["has_upcoming"]:
+            if earnings["risk_level"] == "high":
+                st.error(
+                    f"🚨 EARNINGS ALERT: {earnings['message']} — "
+                    f"Consider waiting until after results."
+                )
+            elif earnings["risk_level"] == "medium":
+                st.warning(
+                    f"⚠️ {earnings['message']} — "
+                    f"Elevated volatility expected."
+                )
+            elif earnings["risk_level"] == "recent":
+                st.info(f"📅 {earnings['message']}")
+            else:
+                st.info(f"📅 {earnings['message']}")
+        else:
+            st.success("✅ No earnings due in the next 30 days")
+
+        st.markdown(
+            '<div class="section-header">Model signal</div>',
+            unsafe_allow_html=True
+        )
         with st.spinner("Running ensemble model..."):
             model, scaler, features, accuracy = train_model(ticker)
             signal, confidence, buy_prob, sell_prob = get_signal(
@@ -401,46 +1123,61 @@ with tab2:
             )
             risk_metrics = get_risk_metrics(df)
 
-        color = "green" if signal == "BUY" else "red"
-        r1, r2, r3, r4, r5, r6 = st.columns(6)
-        r1.markdown(f"### :{color}[{signal}]")
-        r2.metric("Confidence", f"{confidence:.1%}")
-        r3.metric("Buy prob", f"{buy_prob:.1%}")
-        r4.metric("Sell prob", f"{sell_prob:.1%}")
-        r5.metric("Accuracy", f"{accuracy:.1%}")
-        r6.metric("Sharpe", risk_metrics["Sharpe Ratio"])
+        signal_badge = (
+            "signal-badge-buy" if signal == "BUY"
+            else "signal-badge-sell"
+        )
+        st.markdown(
+            f'<span class="{signal_badge}">'
+            f'{signal}</span>&nbsp;&nbsp;'
+            f'<span style="color:{t["text2"]};font-size:14px;">'
+            f'Confidence {confidence:.1%} · '
+            f'Accuracy {accuracy:.1%}</span>',
+            unsafe_allow_html=True
+        )
+        st.markdown("<br>", unsafe_allow_html=True)
 
-        r7, r8, r9, r10 = st.columns(4)
-        r7.metric("Max drawdown", risk_metrics["Max Drawdown"])
-        r8.metric("Ann. volatility", risk_metrics["Annual Volatility"])
-        r9.metric("Win rate", risk_metrics["Win Rate"])
-        r10.metric(
+        r1, r2, r3, r4, r5, r6 = st.columns(6)
+        r1.metric("Buy prob", f"{buy_prob:.1%}")
+        r2.metric("Sell prob", f"{sell_prob:.1%}")
+        r3.metric("Sharpe", risk_metrics["Sharpe Ratio"])
+        r4.metric("Max drawdown", risk_metrics["Max Drawdown"])
+        r5.metric("Volatility", risk_metrics["Annual Volatility"])
+        r6.metric(
             "Rel. strength",
             f"{rs:+.1f}%" if rs else "N/A"
         )
 
-        st.markdown("---")
         if fundamentals:
-            st.subheader("Fundamentals")
+            st.markdown(
+                '<div class="section-header">Fundamentals</div>',
+                unsafe_allow_html=True
+            )
             keys = [k for k in fundamentals
                     if k not in ["Sector", "Industry"]]
             fcols = st.columns(4)
             for i, k in enumerate(keys):
                 v = fundamentals[k]
-                if k == "Market Cap" and isinstance(v, (int, float)):
+                if k == "Market Cap" and isinstance(
+                    v, (int, float)
+                ):
                     fcols[i % 4].metric(k, f"₹{v/1e9:.0f}B")
-                elif k in ["Dividend Yield", "ROE",
-                           "Revenue Growth",
-                           "Promoter Holding"] and isinstance(v, float):
+                elif k in [
+                    "Dividend Yield", "ROE",
+                    "Revenue Growth", "Promoter Holding"
+                ] and isinstance(v, float):
                     fcols[i % 4].metric(k, f"{v:.1%}")
                 else:
                     fcols[i % 4].metric(
                         k,
-                        f"{round(v, 2)}" if isinstance(v, float) else str(v)
+                        f"{round(v, 2)}"
+                        if isinstance(v, float) else str(v)
                     )
 
-        st.markdown("---")
-        st.subheader("News sentiment")
+        st.markdown(
+            '<div class="section-header">News sentiment</div>',
+            unsafe_allow_html=True
+        )
         with st.spinner("Analysing news..."):
             news_data = get_news_sentiment(ticker)
 
@@ -461,40 +1198,134 @@ with tab2:
             else "📉" if trend == "deteriorating"
             else "➡️"
         )
+        sent_color = (
+            t["green"] if sentiment == "positive"
+            else t["red"] if sentiment == "negative"
+            else t["text2"]
+        )
 
-        sc1, sc2, sc3, sc4, sc5 = st.columns(5)
-        sc1.metric("Sentiment", sentiment.capitalize())
-        sc2.metric("Confidence", f"{sent_conf:.1%}")
-        sc3.metric("Score", f"{sentiment_score:+.2f}")
-        sc4.metric("Trend", f"{trend_icon} {trend.capitalize()}")
-        sc5.metric("Headlines", headline_count)
-
-        d1, d2, d3 = st.columns(3)
-        d1.metric(
-            "Positive", f"{distribution.get('positive', 0):.1%}"
-        )
-        d2.metric(
-            "Neutral", f"{distribution.get('neutral', 0):.1%}"
-        )
-        d3.metric(
-            "Negative", f"{distribution.get('negative', 0):.1%}"
-        )
+        st.markdown(f"""
+        <div style="background:{t['card']};
+        border:1px solid {t['border']};
+        border-radius:10px;padding:16px;margin-bottom:16px;">
+            <div style="display:flex;gap:24px;
+            flex-wrap:wrap;margin-bottom:12px;">
+                <div>
+                    <div style="font-size:11px;
+                    color:{t['text2']};
+                    text-transform:uppercase;
+                    letter-spacing:0.5px;
+                    margin-bottom:4px;">Sentiment</div>
+                    <div style="font-size:18px;
+                    font-weight:600;color:{sent_color};">
+                        {sentiment.capitalize()}
+                    </div>
+                </div>
+                <div>
+                    <div style="font-size:11px;
+                    color:{t['text2']};
+                    text-transform:uppercase;
+                    letter-spacing:0.5px;
+                    margin-bottom:4px;">Score</div>
+                    <div style="font-size:18px;
+                    font-weight:600;
+                    color:{t['text']};
+                    font-family:'JetBrains Mono',monospace;">
+                        {sentiment_score:+.2f}
+                    </div>
+                </div>
+                <div>
+                    <div style="font-size:11px;
+                    color:{t['text2']};
+                    text-transform:uppercase;
+                    letter-spacing:0.5px;
+                    margin-bottom:4px;">Trend</div>
+                    <div style="font-size:18px;
+                    font-weight:600;color:{t['text']};">
+                        {trend_icon} {trend.capitalize()}
+                    </div>
+                </div>
+                <div>
+                    <div style="font-size:11px;
+                    color:{t['text2']};
+                    text-transform:uppercase;
+                    letter-spacing:0.5px;
+                    margin-bottom:4px;">Positive</div>
+                    <div style="font-size:18px;
+                    font-weight:600;color:{t['green']};
+                    font-family:'JetBrains Mono',monospace;">
+                        {distribution.get('positive', 0):.1%}
+                    </div>
+                </div>
+                <div>
+                    <div style="font-size:11px;
+                    color:{t['text2']};
+                    text-transform:uppercase;
+                    letter-spacing:0.5px;
+                    margin-bottom:4px;">Negative</div>
+                    <div style="font-size:18px;
+                    font-weight:600;color:{t['red']};
+                    font-family:'JetBrains Mono',monospace;">
+                        {distribution.get('negative', 0):.1%}
+                    </div>
+                </div>
+                <div>
+                    <div style="font-size:11px;
+                    color:{t['text2']};
+                    text-transform:uppercase;
+                    letter-spacing:0.5px;
+                    margin-bottom:4px;">Headlines</div>
+                    <div style="font-size:18px;
+                    font-weight:600;color:{t['text']};
+                    font-family:'JetBrains Mono',monospace;">
+                        {headline_count}
+                    </div>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
 
         if risk_flags:
-            st.error(
-                f"⚠️ Risk flags detected: {', '.join(risk_flags)}"
+            st.markdown(
+                f'<div style="background:{t["red"]}22;'
+                f'border:1px solid {t["red"]}44;'
+                f'border-radius:6px;padding:8px 12px;'
+                f'color:{t["red"]};font-size:13px;'
+                f'margin-bottom:8px;">⚠️ Risk flags: '
+                f'{", ".join(risk_flags)}</div>',
+                unsafe_allow_html=True
             )
 
         if pos_kw:
-            st.markdown(
-                "**Positive signals:** " +
-                " · ".join([f"`{k}`" for k in pos_kw])
+            tags = "".join(
+                [f'<span class="tag" '
+                 f'style="color:{t["green"]};'
+                 f'border-color:{t["green"]}44;">'
+                 f'{k}</span>' for k in pos_kw]
             )
+            st.markdown(
+                f'<div style="margin-bottom:8px;">'
+                f'<span style="font-size:12px;'
+                f'color:{t["text2"]};">Positive: </span>'
+                f'{tags}</div>',
+                unsafe_allow_html=True
+            )
+
         if neg_kw:
-            st.markdown(
-                "**Negative signals:** " +
-                " · ".join([f"`{k}`" for k in neg_kw])
+            tags = "".join(
+                [f'<span class="tag" '
+                 f'style="color:{t["red"]};'
+                 f'border-color:{t["red"]}44;">'
+                 f'{k}</span>' for k in neg_kw]
             )
+            st.markdown(
+                f'<div style="margin-bottom:8px;">'
+                f'<span style="font-size:12px;'
+                f'color:{t["text2"]};">Negative: </span>'
+                f'{tags}</div>',
+                unsafe_allow_html=True
+            )
+
+        st.markdown('</div>', unsafe_allow_html=True)
 
         if sources:
             st.caption(f"Sources: {' · '.join(sources)}")
@@ -502,13 +1333,31 @@ with tab2:
         st.markdown("**Recent headlines:**")
         for h in headlines:
             text_lower = h.lower()
-            has_neg = any(w in text_lower for w in NEGATIVE_KEYWORDS[:10])
-            has_pos = any(w in text_lower for w in POSITIVE_KEYWORDS[:10])
+            has_neg = any(
+                w in text_lower
+                for w in NEGATIVE_KEYWORDS[:10]
+            )
+            has_pos = any(
+                w in text_lower
+                for w in POSITIVE_KEYWORDS[:10]
+            )
+            color = (
+                t["red"] if has_neg
+                else t["green"] if has_pos
+                else t["text2"]
+            )
             icon = "🔴" if has_neg else "🟢" if has_pos else "⚪"
-            st.write(f"{icon} {h}")
+            st.markdown(
+                f'<div style="color:{color};font-size:13px;'
+                f'padding:6px 0;border-bottom:1px solid '
+                f'{t["border"]};">{icon} {h}</div>',
+                unsafe_allow_html=True
+            )
 
-        st.markdown("---")
-        st.subheader("AI analysis")
+        st.markdown(
+            '<div class="section-header">AI analysis</div>',
+            unsafe_allow_html=True
+        )
         with st.spinner("Generating investment brief..."):
             explanation = explain_signal(
                 ticker=ticker,
@@ -531,17 +1380,27 @@ with tab2:
                 relative_strength=rs,
                 market_regime=regime
             )
-        st.info(explanation)
+        st.markdown(
+            f'<div class="thesis-card">{explanation}</div>',
+            unsafe_allow_html=True
+        )
 
 with tab3:
-    st.subheader("30-day price forecast")
+    st.markdown(
+        '<div class="section-header">30-day price forecast</div>',
+        unsafe_allow_html=True
+    )
     try:
         from prophet import Prophet
-        ticker_f = st.selectbox("Select stock", NIFTY_50, key="fc")
-        with st.spinner("Running forecast..."):
+        ticker_f = st.selectbox(
+            "Select stock", NIFTY_50, key="fc"
+        )
+        with st.spinner("Running Prophet forecast..."):
             df_f = get_stock_data(ticker_f, period="2y")
             if df_f is not None:
-                pf = df_f.reset_index()[["Date", "Close"]].copy()
+                pf = df_f.reset_index()[
+                    ["Date", "Close"]
+                ].copy()
                 pf.columns = ["ds", "y"]
                 pf["ds"] = pf["ds"].dt.tz_localize(None)
                 m = Prophet(
@@ -556,63 +1415,100 @@ with tab3:
                 fig_f = go.Figure()
                 fig_f.add_trace(go.Scatter(
                     x=pf["ds"], y=pf["y"],
-                    name="Actual", line=dict(color="white")
+                    name="Actual",
+                    line=dict(color=t["text"], width=1.5)
                 ))
                 fig_f.add_trace(go.Scatter(
                     x=forecast["ds"], y=forecast["yhat"],
-                    name="Forecast", line=dict(color="orange")
+                    name="Forecast",
+                    line=dict(color=t["accent"], width=2)
                 ))
                 fig_f.add_trace(go.Scatter(
-                    x=forecast["ds"], y=forecast["yhat_upper"],
-                    line=dict(color="rgba(255,165,0,0.2)"),
+                    x=forecast["ds"],
+                    y=forecast["yhat_upper"],
+                    line=dict(
+                        color=f"{t['accent']}33", width=0
+                    ),
                     showlegend=False
                 ))
                 fig_f.add_trace(go.Scatter(
-                    x=forecast["ds"], y=forecast["yhat_lower"],
-                    line=dict(color="rgba(255,165,0,0.2)"),
+                    x=forecast["ds"],
+                    y=forecast["yhat_lower"],
+                    line=dict(
+                        color=f"{t['accent']}33", width=0
+                    ),
                     fill="tonexty",
-                    fillcolor="rgba(255,165,0,0.1)",
+                    fillcolor=f"{t['accent']}22",
                     showlegend=False
                 ))
                 fig_f.update_layout(
-                    title=f"{ticker_f} — 30-day forecast",
-                    height=500
+                    title=dict(
+                        text=f"{ticker_f} — 30-day forecast",
+                        font=dict(color=t["text"], size=14)
+                    ),
+                    height=500,
+                    paper_bgcolor=t["card"],
+                    plot_bgcolor=t["card"],
+                    font=dict(color=t["text2"]),
+                    xaxis=dict(gridcolor=t["border"]),
+                    yaxis=dict(gridcolor=t["border"]),
+                    legend=dict(
+                        bgcolor=t["bg2"],
+                        bordercolor=t["border"],
+                        borderwidth=1
+                    )
                 )
                 st.plotly_chart(fig_f, use_container_width=True)
 
                 last_forecast = float(forecast["yhat"].iloc[-1])
                 last_actual = float(pf["y"].iloc[-1])
                 change_f = (
-                    (last_forecast - last_actual) / last_actual * 100
+                    (last_forecast - last_actual) /
+                    last_actual * 100
                 )
                 f1, f2, f3 = st.columns(3)
-                f1.metric("Current price", f"₹{last_actual:,.2f}")
-                f2.metric("Forecast (30d)", f"₹{last_forecast:,.2f}")
-                f3.metric("Expected change", f"{change_f:+.1f}%")
-                st.caption("Prophet model. Not financial advice.")
+                f1.metric(
+                    "Current price", f"₹{last_actual:,.2f}"
+                )
+                f2.metric(
+                    "Forecast (30d)",
+                    f"₹{last_forecast:,.2f}"
+                )
+                f3.metric(
+                    "Expected change", f"{change_f:+.1f}%"
+                )
+                st.caption(
+                    "Prophet trend + seasonality model. "
+                    "Not financial advice."
+                )
     except ImportError:
-        st.warning("Run `pip install prophet` to enable forecasting.")
+        st.warning(
+            "Run `pip install prophet` to enable forecasting."
+        )
 
 with tab4:
-    st.subheader("Portfolio tracker")
+    st.markdown(
+        '<div class="section-header">Portfolio tracker</div>',
+        unsafe_allow_html=True
+    )
     with st.form("portfolio_form"):
-        st.markdown("Enter your holdings:")
         holdings = []
         for idx in range(5):
             col1, col2, col3 = st.columns(3)
-            t = col1.selectbox(
+            t_pick = col1.selectbox(
                 f"Stock {idx+1}", ["--"] + NIFTY_50,
                 key=f"pt{idx}"
             )
             q = col2.number_input(
-                "Qty", min_value=0, value=0, key=f"pq{idx}"
+                "Quantity",
+                min_value=0, value=0, key=f"pq{idx}"
             )
             p = col3.number_input(
-                "Avg price ₹", min_value=0.0,
-                value=0.0, key=f"pp{idx}"
+                "Avg buy price ₹",
+                min_value=0.0, value=0.0, key=f"pp{idx}"
             )
-            if t != "--" and q > 0:
-                holdings.append((t, q, p))
+            if t_pick != "--" and q > 0:
+                holdings.append((t_pick, q, p))
 
         submitted = st.form_submit_button(
             "Analyse portfolio", type="primary"
@@ -639,9 +1535,12 @@ with tab4:
                 current_val = qty * current_p
                 pnl = current_val - invested
                 pnl_pct = (
-                    (pnl / invested * 100) if invested > 0 else 0
+                    (pnl / invested * 100)
+                    if invested > 0 else 0
                 )
-                model_p, sc_p, f_p, acc_p = train_model(ticker_p)
+                model_p, sc_p, f_p, acc_p = train_model(
+                    ticker_p
+                )
                 sig_p, conf_p, _, _ = get_signal(
                     model_p, sc_p, df_p, f_p
                 )
@@ -676,25 +1575,39 @@ with tab4:
                 (total_pnl / total_invested * 100)
                 if total_invested > 0 else 0
             )
+            pnl_color = t["green"] if total_pnl >= 0 else t["red"]
             pc1, pc2, pc3 = st.columns(3)
             pc1.metric(
-                "Total invested", f"₹{total_invested:,.2f}"
+                "Total invested",
+                f"₹{total_invested:,.2f}"
             )
             pc2.metric(
-                "Current value", f"₹{total_current:,.2f}"
+                "Current value",
+                f"₹{total_current:,.2f}"
             )
             pc3.metric(
                 "Total P&L",
                 f"₹{total_pnl:+,.2f}",
                 f"{total_pnl_pct:+.1f}%"
             )
+
             st.dataframe(
                 pd.DataFrame(portfolio_data),
                 use_container_width=True
             )
+
             fig_pie = px.pie(
                 values=[d["Qty"] for d in portfolio_data],
                 names=[d["Stock"] for d in portfolio_data],
-                title="Portfolio allocation"
+                title="Portfolio allocation",
+                color_discrete_sequence=[
+                    t["accent"], t["green"], t["blue"],
+                    t["gold"], t["red"]
+                ]
+            )
+            fig_pie.update_layout(
+                paper_bgcolor=t["card"],
+                font=dict(color=t["text"]),
+                title_font_color=t["text"]
             )
             st.plotly_chart(fig_pie, use_container_width=True)

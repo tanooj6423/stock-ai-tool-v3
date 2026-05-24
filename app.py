@@ -41,6 +41,9 @@ THEMES = {
         "text": "#e8e8f0",
         "text2": "#8888a8",
         "accent": "#00d4aa",
+        "accent_rgb": "0,212,170",
+        "green_rgb": "0,212,170",
+        "red_rgb": "255,71,87",
     },
     "Midnight Navy": {
         "bg": "#030711",
@@ -54,6 +57,9 @@ THEMES = {
         "text": "#e2e8f0",
         "text2": "#718096",
         "accent": "#4facfe",
+        "accent_rgb": "79,172,254",
+        "green_rgb": "0,229,160",
+        "red_rgb": "255,56,96",
     },
     "Professional Light": {
         "bg": "#f8fafc",
@@ -67,6 +73,9 @@ THEMES = {
         "text": "#0f172a",
         "text2": "#64748b",
         "accent": "#2563eb",
+        "accent_rgb": "37,99,235",
+        "green_rgb": "5,150,105",
+        "red_rgb": "220,38,38",
     }
 }
 
@@ -75,17 +84,21 @@ if "theme" not in st.session_state:
 
 t = THEMES[st.session_state.theme]
 
+def hex_to_rgba(hex_color, alpha=0.1):
+    h = hex_color.lstrip('#')
+    r, g, b = tuple(int(h[i:i+2], 16) for i in (0, 2, 4))
+    return f"rgba({r},{g},{b},{alpha})"
+
 st.markdown(f"""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 html, body, [class*="css"] {{
-    font-family: 'Inter', sans-serif;
+    font-family: 'Inter', sans-serif !important;
 }}
 
 .stApp {{
     background-color: {t['bg']};
-    color: {t['text']};
 }}
 
 section[data-testid="stSidebar"] {{
@@ -97,226 +110,156 @@ section[data-testid="stSidebar"] * {{
     color: {t['text']} !important;
 }}
 
-.main-header {{
-    padding: 24px 0 8px 0;
+.block-container {{
+    padding-top: 24px;
+    padding-bottom: 48px;
+}}
+
+.app-header {{
+    padding-bottom: 20px;
+    margin-bottom: 8px;
     border-bottom: 1px solid {t['border']};
-    margin-bottom: 24px;
 }}
 
-.main-title {{
-    font-size: 28px;
+.app-name {{
+    font-size: 15px;
     font-weight: 700;
-    color: {t['text']};
-    letter-spacing: -0.5px;
-    margin: 0;
+    color: {t['accent']};
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin: 0 0 4px 0;
 }}
 
-.main-subtitle {{
-    font-size: 13px;
+.app-tagline {{
+    font-size: 12px;
     color: {t['text2']};
-    margin-top: 4px;
+    letter-spacing: 0.3px;
 }}
 
-.accent-line {{
-    width: 48px;
-    height: 3px;
-    background: linear-gradient(90deg, {t['accent']}, transparent);
-    margin: 8px 0 0 0;
-    border-radius: 2px;
-}}
-
-.pick-card {{
-    background: {t['card']};
-    border: 1px solid {t['border']};
-    border-radius: 12px;
-    padding: 20px;
-    margin-bottom: 16px;
-    position: relative;
-}}
-
-.pick-card-header {{
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 16px;
-}}
-
-.pick-rank {{
-    font-size: 11px;
-    font-weight: 600;
+.section-label {{
+    font-size: 10px;
+    font-weight: 700;
     color: {t['text2']};
     text-transform: uppercase;
+    letter-spacing: 2px;
+    margin: 28px 0 12px 0;
+}}
+
+.pick-header {{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 4px;
+    flex-wrap: wrap;
+}}
+
+.pick-name {{
+    font-size: 16px;
+    font-weight: 700;
+    color: {t['text']};
+    font-family: 'JetBrains Mono', monospace;
+}}
+
+.badge-buy {{
+    font-size: 11px;
+    font-weight: 700;
+    color: {t['green']};
+    background: rgba({t['green_rgb']},0.12);
+    border: 1px solid rgba({t['green_rgb']},0.3);
+    padding: 2px 10px;
+    border-radius: 4px;
     letter-spacing: 1px;
 }}
 
-.pick-ticker {{
-    font-size: 22px;
-    font-weight: 700;
-    color: {t['text']};
-    font-family: 'JetBrains Mono', monospace;
-}}
-
-.pick-price {{
-    font-size: 14px;
-    color: {t['text2']};
-    margin-top: 2px;
-}}
-
-.signal-badge-buy {{
-    background: {t['green']}22;
-    color: {t['green']};
-    border: 1px solid {t['green']}44;
-    padding: 4px 14px;
-    border-radius: 20px;
-    font-size: 13px;
-    font-weight: 600;
-    display: inline-block;
-}}
-
-.signal-badge-sell {{
-    background: {t['red']}22;
-    color: {t['red']};
-    border: 1px solid {t['red']}44;
-    padding: 4px 14px;
-    border-radius: 20px;
-    font-size: 13px;
-    font-weight: 600;
-    display: inline-block;
-}}
-
-.score-badge {{
-    background: {t['accent']}22;
-    color: {t['accent']};
-    border: 1px solid {t['accent']}44;
-    padding: 4px 14px;
-    border-radius: 20px;
-    font-size: 13px;
-    font-weight: 600;
-    display: inline-block;
-    font-family: 'JetBrains Mono', monospace;
-}}
-
-.metric-card {{
-    background: {t['bg2']};
-    border: 1px solid {t['border']};
-    border-radius: 8px;
-    padding: 12px 16px;
-    text-align: center;
-}}
-
-.metric-label {{
+.badge-sell {{
     font-size: 11px;
-    color: {t['text2']};
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 4px;
-}}
-
-.metric-value {{
-    font-size: 18px;
-    font-weight: 600;
-    color: {t['text']};
-    font-family: 'JetBrains Mono', monospace;
-}}
-
-.metric-value-green {{
-    font-size: 18px;
-    font-weight: 600;
-    color: {t['green']};
-    font-family: 'JetBrains Mono', monospace;
-}}
-
-.metric-value-red {{
-    font-size: 18px;
-    font-weight: 600;
+    font-weight: 700;
     color: {t['red']};
+    background: rgba({t['red_rgb']},0.12);
+    border: 1px solid rgba({t['red_rgb']},0.3);
+    padding: 2px 10px;
+    border-radius: 4px;
+    letter-spacing: 1px;
+}}
+
+.badge-score {{
+    font-size: 11px;
+    font-weight: 600;
+    color: {t['accent']};
+    background: rgba({t['accent_rgb']},0.1);
+    border: 1px solid rgba({t['accent_rgb']},0.25);
+    padding: 2px 10px;
+    border-radius: 4px;
     font-family: 'JetBrains Mono', monospace;
 }}
 
-.score-bar-container {{
+.pick-meta {{
+    font-size: 12px;
+    color: {t['text2']};
+}}
+
+.score-track {{
+    height: 2px;
     background: {t['border']};
-    border-radius: 4px;
-    height: 6px;
-    margin-top: 8px;
+    border-radius: 2px;
+    margin: 10px 0 16px 0;
     overflow: hidden;
 }}
 
-.score-bar-fill {{
-    height: 6px;
-    border-radius: 4px;
+.score-fill {{
+    height: 2px;
+    border-radius: 2px;
     background: linear-gradient(90deg, {t['accent']}, {t['green']});
 }}
 
-.section-header {{
-    font-size: 14px;
-    font-weight: 600;
+.level-label {{
+    font-size: 10px;
     color: {t['text2']};
     text-transform: uppercase;
-    letter-spacing: 1px;
-    margin: 24px 0 12px 0;
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    letter-spacing: 1.5px;
+    margin: 20px 0 8px 0;
+    padding-bottom: 6px;
+    border-bottom: 1px solid {t['border']};
 }}
 
-.section-header::after {{
-    content: '';
-    flex: 1;
-    height: 1px;
-    background: {t['border']};
-}}
-
-.thesis-card {{
-    background: {t['accent']}0d;
-    border: 1px solid {t['accent']}33;
-    border-left: 3px solid {t['accent']};
-    border-radius: 8px;
-    padding: 16px;
-    font-size: 14px;
+.thesis-box {{
+    background: rgba({t['accent_rgb']},0.06);
+    border-left: 2px solid {t['accent']};
+    border-radius: 0 6px 6px 0;
+    padding: 14px 16px;
+    font-size: 13px;
     color: {t['text']};
-    line-height: 1.7;
+    line-height: 1.75;
+    margin-top: 8px;
 }}
 
-.regime-bull {{
-    color: {t['green']};
-    font-weight: 600;
+.status-row {{
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    background: {t['card']};
+    border: 1px solid {t['border']};
+    border-radius: 6px;
+    padding: 10px 16px;
+    margin-bottom: 20px;
+    font-size: 12px;
+    flex-wrap: wrap;
 }}
 
-.regime-bear {{
-    color: {t['red']};
-    font-weight: 600;
-}}
-
-.regime-sideways {{
-    color: {t['gold']};
-    font-weight: 600;
-}}
-
-.regime-unknown {{
+.status-item {{
     color: {t['text2']};
+}}
+
+.status-value {{
+    color: {t['text']};
     font-weight: 600;
+    font-family: 'JetBrains Mono', monospace;
 }}
 
-.headline-pos {{
-    color: {t['green']};
-    font-size: 13px;
-    padding: 4px 0;
-    border-bottom: 1px solid {t['border']};
-}}
-
-.headline-neg {{
-    color: {t['red']};
-    font-size: 13px;
-    padding: 4px 0;
-    border-bottom: 1px solid {t['border']};
-}}
-
-.headline-neu {{
-    color: {t['text2']};
-    font-size: 13px;
-    padding: 4px 0;
-    border-bottom: 1px solid {t['border']};
-}}
+.regime-bull {{ color: {t['green']}; font-weight: 700; }}
+.regime-bear {{ color: {t['red']}; font-weight: 700; }}
+.regime-sideways {{ color: {t['gold']}; font-weight: 700; }}
+.regime-unknown {{ color: {t['text2']}; font-weight: 700; }}
 
 .divider {{
     height: 1px;
@@ -324,175 +267,260 @@ section[data-testid="stSidebar"] * {{
     margin: 24px 0;
 }}
 
-[data-testid="stMetricValue"] {{
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 1.2rem !important;
+.sentiment-grid {{
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 8px;
+    margin-bottom: 12px;
+}}
+
+.sentiment-cell {{
+    background: {t['bg2']};
+    border: 1px solid {t['border']};
+    border-radius: 6px;
+    padding: 10px 12px;
+}}
+
+.sentiment-cell-label {{
+    font-size: 9px;
+    color: {t['text2']};
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+}}
+
+.sentiment-cell-value {{
+    font-size: 16px;
     font-weight: 600;
+    font-family: 'JetBrains Mono', monospace;
+    color: {t['text']};
+}}
+
+.headline-item {{
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    padding: 6px 0;
+    border-bottom: 1px solid {t['border']};
+    font-size: 12px;
+}}
+
+.pos-text {{ color: {t['green']}; }}
+.neg-text {{ color: {t['red']}; }}
+.neu-text {{ color: {t['text2']}; }}
+
+.keyword-tag {{
+    display: inline-block;
+    font-size: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    padding: 2px 7px;
+    border-radius: 3px;
+    margin: 2px;
+}}
+
+.keyword-pos {{
+    color: {t['green']};
+    background: rgba({t['green_rgb']},0.1);
+    border: 1px solid rgba({t['green_rgb']},0.25);
+}}
+
+.keyword-neg {{
+    color: {t['red']};
+    background: rgba({t['red_rgb']},0.1);
+    border: 1px solid rgba({t['red_rgb']},0.25);
+}}
+
+.stock-header-name {{
+    font-size: 26px;
+    font-weight: 700;
+    color: {t['text']};
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: -0.5px;
+}}
+
+.stock-header-price {{
+    font-size: 22px;
+    font-weight: 600;
+    color: {t['text']};
+    font-family: 'JetBrains Mono', monospace;
+}}
+
+.stock-header-change-pos {{
+    font-size: 14px;
+    font-weight: 500;
+    color: {t['green']};
+}}
+
+.stock-header-change-neg {{
+    font-size: 14px;
+    font-weight: 500;
+    color: {t['red']};
+}}
+
+.stock-header-meta {{
+    font-size: 12px;
+    color: {t['text2']};
+    margin-top: 4px;
+}}
+
+[data-testid="stMetricValue"] {{
+    font-family: 'JetBrains Mono', monospace !important;
+    font-size: 1.15rem !important;
+    font-weight: 600 !important;
     color: {t['text']} !important;
 }}
 
 [data-testid="stMetricLabel"] {{
-    font-size: 0.72rem !important;
+    font-size: 0.68rem !important;
     color: {t['text2']} !important;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}}
-
-[data-testid="stMetricDelta"] {{
-    font-size: 0.8rem !important;
+    text-transform: uppercase !important;
+    letter-spacing: 1px !important;
 }}
 
 .stTabs [data-baseweb="tab-list"] {{
-    background-color: {t['bg2']};
-    border-radius: 8px;
-    padding: 4px;
-    gap: 2px;
+    background: {t['bg2']};
     border: 1px solid {t['border']};
+    border-radius: 6px;
+    padding: 3px;
+    gap: 2px;
 }}
 
 .stTabs [data-baseweb="tab"] {{
-    background-color: transparent;
-    border-radius: 6px;
+    background: transparent;
+    border-radius: 4px;
     color: {t['text2']};
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 500;
-    padding: 8px 16px;
+    padding: 6px 14px;
+    letter-spacing: 0.3px;
 }}
 
 .stTabs [aria-selected="true"] {{
-    background-color: {t['accent']}22 !important;
+    background: rgba({t['accent_rgb']},0.15) !important;
     color: {t['accent']} !important;
-    border: 1px solid {t['accent']}44;
+    border: 1px solid rgba({t['accent_rgb']},0.3) !important;
 }}
 
 .stExpander {{
-    background: {t['card']};
-    border: 1px solid {t['border']};
-    border-radius: 10px;
-    margin-bottom: 12px;
+    background: {t['card']} !important;
+    border: 1px solid {t['border']} !important;
+    border-radius: 8px !important;
+    margin-bottom: 8px !important;
 }}
 
-.stExpander > div > div > div > div {{
-    font-size: 14px;
-    font-weight: 500;
-    color: {t['text']};
+.stButton > button {{
+    background: {t['accent']} !important;
+    color: {t['bg']} !important;
+    border: none !important;
+    border-radius: 5px !important;
+    font-weight: 700 !important;
+    font-size: 12px !important;
+    letter-spacing: 0.5px !important;
+    padding: 8px 18px !important;
 }}
 
-.stButton button {{
-    background: {t['accent']};
-    color: {t['bg']};
-    border: none;
-    border-radius: 8px;
-    font-weight: 600;
-    font-size: 13px;
-    padding: 8px 20px;
-    transition: opacity 0.2s;
-}}
-
-.stButton button:hover {{
-    opacity: 0.85;
-}}
-
-.stSelectbox > div > div {{
-    background: {t['bg2']};
-    border: 1px solid {t['border']};
-    border-radius: 8px;
-    color: {t['text']};
-}}
-
+.stSelectbox > div > div,
 .stTextInput > div > div > input {{
-    background: {t['bg2']};
-    border: 1px solid {t['border']};
-    border-radius: 8px;
-    color: {t['text']};
+    background: {t['bg2']} !important;
+    border: 1px solid {t['border']} !important;
+    color: {t['text']} !important;
+    border-radius: 6px !important;
+    font-size: 13px !important;
 }}
 
 .stProgress > div > div > div {{
-    background: {t['accent']};
-    border-radius: 4px;
+    background: {t['accent']} !important;
 }}
 
 .stProgress > div > div {{
-    background: {t['border']};
-    border-radius: 4px;
+    background: {t['border']} !important;
 }}
 
-.sidebar-logo {{
-    font-size: 20px;
+.sidebar-brand {{
+    font-size: 13px;
     font-weight: 700;
     color: {t['accent']};
-    letter-spacing: -0.5px;
-    padding: 16px 0 8px 0;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 12px 0 16px 0;
     border-bottom: 1px solid {t['border']};
-    margin-bottom: 16px;
+    margin-bottom: 20px;
 }}
 
-.sidebar-section {{
-    font-size: 10px;
-    font-weight: 600;
+.sidebar-label {{
+    font-size: 9px;
+    font-weight: 700;
     color: {t['text2']};
     text-transform: uppercase;
-    letter-spacing: 1.5px;
+    letter-spacing: 2px;
     margin: 16px 0 8px 0;
 }}
 
-.tag {{
-    display: inline-block;
-    background: {t['bg']};
-    border: 1px solid {t['border']};
-    border-radius: 4px;
-    padding: 2px 8px;
-    font-size: 11px;
-    color: {t['text2']};
-    margin: 2px;
-    font-family: 'JetBrains Mono', monospace;
-}}
-
-.status-bar {{
+.empty-state {{
+    text-align: center;
+    padding: 48px 24px;
     background: {t['card']};
     border: 1px solid {t['border']};
     border-radius: 8px;
-    padding: 12px 16px;
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    margin-bottom: 16px;
-    font-size: 13px;
+    color: {t['text2']};
 }}
 
+.empty-state-icon {{
+    font-size: 36px;
+    margin-bottom: 12px;
+}}
+
+.empty-state-title {{
+    font-size: 15px;
+    font-weight: 600;
+    color: {t['text']};
+    margin-bottom: 6px;
+}}
+
+.empty-state-desc {{
+    font-size: 13px;
+}}
 </style>
 """, unsafe_allow_html=True)
 
 st.markdown(f"""
-<div class="main-header">
-    <p class="main-title">📈 Equitex Intelligence</p>
-    <p class="main-subtitle">Professional-grade AI equity analysis for Indian markets · Not financial advice</p>
-    <div class="accent-line"></div>
+<div class="app-header">
+    <div class="app-name">Equitex Intelligence</div>
+    <div class="app-tagline">
+        Professional AI equity analysis · NSE markets · 
+        Not financial advice
+    </div>
 </div>
 """, unsafe_allow_html=True)
 
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
-    "🎯 Daily Picks",
-    "📊 Stock Analysis",
-    "🔮 Price Forecast",
-    "📁 Portfolio",
-    "⚙️ Settings"
+    "Daily Picks",
+    "Stock Analysis",
+    "Price Forecast",
+    "Portfolio",
+    "Settings"
 ])
 
 with tab5:
-    st.markdown('<div class="section-header">Display</div>',
-                unsafe_allow_html=True)
+    st.markdown(
+        '<div class="section-label">Display</div>',
+        unsafe_allow_html=True
+    )
     theme_choice = st.selectbox(
         "Theme",
         list(THEMES.keys()),
-        index=list(THEMES.keys()).index(st.session_state.theme)
+        index=list(THEMES.keys()).index(
+            st.session_state.theme
+        )
     )
     if theme_choice != st.session_state.theme:
         st.session_state.theme = theme_choice
         st.rerun()
 
-    st.markdown('<div class="section-header">Trading parameters</div>',
-                unsafe_allow_html=True)
+    st.markdown(
+        '<div class="section-label">Trading parameters</div>',
+        unsafe_allow_html=True
+    )
     capital = st.number_input(
         "Trading capital (₹)",
         min_value=10000, max_value=10000000,
@@ -504,8 +532,10 @@ with tab5:
         value=1.5, step=0.25
     )
 
-    st.markdown('<div class="section-header">Scan settings</div>',
-                unsafe_allow_html=True)
+    st.markdown(
+        '<div class="section-label">Scan settings</div>',
+        unsafe_allow_html=True
+    )
     min_score = st.slider(
         "Minimum composite score",
         min_value=40, max_value=85,
@@ -521,14 +551,13 @@ with tab5:
 
 with tab1:
     st.sidebar.markdown(
-        f'<div class="sidebar-logo">Equitex v3</div>',
+        f'<div class="sidebar-brand">Equitex</div>',
         unsafe_allow_html=True
     )
     st.sidebar.markdown(
-        f'<div class="sidebar-section">Stock selection</div>',
+        f'<div class="sidebar-label">Stock selection</div>',
         unsafe_allow_html=True
     )
-
     mode = st.sidebar.radio(
         "", ["Popular stocks", "Search any NSE stock"],
         label_visibility="collapsed"
@@ -542,14 +571,15 @@ with tab1:
     else:
         scan_tickers = ALL_STOCKS
 
-    col_h, col_btn = st.columns([5, 1])
-    with col_h:
+    top_row_l, top_row_r = st.columns([5, 1])
+    with top_row_l:
         st.markdown(
-            '<div class="section-header">AI screened daily picks</div>',
+            '<div class="section-label">'
+            'AI screened daily picks</div>',
             unsafe_allow_html=True
         )
-    with col_btn:
-        run_scan = st.button("🔄 Refresh", type="primary")
+    with top_row_r:
+        run_scan = st.button("↺ Refresh", type="primary")
 
     progress_bar = st.progress(0)
     status_text = st.empty()
@@ -565,13 +595,13 @@ with tab1:
         secs = remaining % 60
         progress_bar.progress(pct)
         status_text.markdown(
-            f'<span style="color:{t["text2"]};font-size:13px;">'
-            f'Scanning {current_ticker.replace(".NS", "")} '
+            f'<span style="font-size:12px;color:{t["text2"]};">'
+            f'Scanning {current_ticker.replace(".NS","")} '
             f'({current}/{total})</span>',
             unsafe_allow_html=True
         )
         time_text.markdown(
-            f'<span style="color:{t["text2"]};font-size:12px;">'
+            f'<span style="font-size:11px;color:{t["text2"]};">'
             f'Est. remaining: {mins}m {secs}s</span>',
             unsafe_allow_html=True
         )
@@ -587,39 +617,33 @@ with tab1:
     status_text.empty()
     time_text.empty()
 
-    regime_class = f"regime-{regime}"
     regime_icons = {
-        "bull": "🟢", "bear": "🔴",
-        "sideways": "🟡", "unknown": "⚪"
+        "bull": "●", "bear": "●",
+        "sideways": "●", "unknown": "○"
     }
-    regime_icon = regime_icons.get(regime, "⚪")
+    regime_icon = regime_icons.get(regime, "○")
 
     st.markdown(f"""
-    <div style="display:flex;gap:24px;align-items:center;
-    background:{t['card']};border:1px solid {t['border']};
-    border-radius:8px;padding:12px 16px;margin-bottom:20px;
-    font-size:13px;">
-        <span>
-            <span style="color:{t['text2']}">Market regime</span>
-            &nbsp;
-            <span class="{regime_class}">{regime_icon} {regime.upper()}</span>
-        </span>
-        <span style="color:{t['border']}">|</span>
-        <span style="color:{t['text2']}">
-            Stocks scanned: 
-            <span style="color:{t['text']};font-weight:600;">
-                {len(scan_tickers)}
+    <div class="status-row">
+        <span class="status-item">
+            Market regime &nbsp;
+            <span class="regime-{regime}">
+                {regime_icon} {regime.upper()}
             </span>
         </span>
-        <span style="color:{t['border']}">|</span>
-        <span style="color:{t['text2']}">
-            Picks found: 
-            <span style="color:{t['accent']};font-weight:600;">
-                {len(picks)}
-            </span>
+        <span style="color:{t['border']};">·</span>
+        <span class="status-item">
+            Scanned &nbsp;
+            <span class="status-value">{len(scan_tickers)}</span>
         </span>
-        <span style="color:{t['border']}">|</span>
-        <span style="color:{t['text2']}">
+        <span style="color:{t['border']};">·</span>
+        <span class="status-item">
+            Picks &nbsp;
+            <span class="status-value"
+            style="color:{t['accent']};">{len(picks)}</span>
+        </span>
+        <span style="color:{t['border']};">·</span>
+        <span class="status-item">
             10-layer composite scoring
         </span>
     </div>
@@ -627,113 +651,107 @@ with tab1:
 
     if not picks:
         st.markdown(f"""
-        <div style="background:{t['card']};border:1px solid {t['border']};
-        border-radius:10px;padding:32px;text-align:center;color:{t['text2']};">
-            <div style="font-size:32px;margin-bottom:12px;">🔍</div>
-            <div style="font-size:16px;font-weight:600;
-            color:{t['text']};margin-bottom:8px;">
-                No picks today
-            </div>
-            <div style="font-size:13px;">
+        <div class="empty-state">
+            <div class="empty-state-icon">◎</div>
+            <div class="empty-state-title">No picks today</div>
+            <div class="empty-state-desc">
                 No stocks passed all screening criteria. 
-                Market conditions may not be favourable 
-                for new entries.
+                Market conditions may not be favourable.
             </div>
         </div>
         """, unsafe_allow_html=True)
     else:
         for i, pick in enumerate(picks):
             score = pick["score"]
-            score_pct = int((score / 100) * 100)
+            score_pct = score
             signal = pick["signal"]
             badge_class = (
-                "signal-badge-buy" if signal == "BUY"
-                else "signal-badge-sell"
+                "badge-buy" if signal == "BUY"
+                else "badge-sell"
             )
             trend_icon = (
-                "📈" if pick.get("sentiment_trend") == "improving"
-                else "📉"
+                "↑" if pick.get("sentiment_trend") == "improving"
+                else "↓"
                 if pick.get("sentiment_trend") == "deteriorating"
-                else "➡️"
+                else "→"
             )
-            earnings_label = ""
-            if pick.get("earnings_message"):
-                earnings_label = (
-                    f" &nbsp;·&nbsp; 📅 {pick['earnings_message']}"
-                )
 
             with st.expander(
-                f"#{i+1}  {pick['ticker'].replace('.NS', '')}  "
-                f"·  {signal}  {pick['confidence']:.1%}  "
-                f"·  Score {score}/100  "
+                f"#{i+1}  {pick['ticker'].replace('.NS','')}  "
+                f"·  {signal} {pick['confidence']:.0%}  "
+                f"·  {score}/100  "
                 f"·  ₹{pick['price']:,.2f}",
                 expanded=(i < 3)
             ):
-                st.markdown(f"""
-                <div style="display:flex;align-items:center;
-                gap:12px;margin-bottom:16px;flex-wrap:wrap;">
-                    <span class="{badge_class}">{signal}</span>
-                    <span class="score-badge">{score}/100</span>
-                    <span style="color:{t['text2']};font-size:13px;">
-                        {pick['sector']} · 
-                        Confidence {pick['confidence']:.1%} · 
-                        Sentiment {trend_icon}
-                        {earnings_label}
-                    </span>
-                </div>
-                <div class="score-bar-container">
-                    <div class="score-bar-fill" 
-                    style="width:{score_pct}%"></div>
-                </div>
-                """, unsafe_allow_html=True)
+                st.markdown(
+                    f'<div class="pick-header">'
+                    f'<span class="{badge_class}">{signal}</span>'
+                    f'<span class="badge-score">'
+                    f'{score}/100</span>'
+                    f'<span class="pick-meta">'
+                    f'{pick["sector"]} &nbsp;·&nbsp; '
+                    f'Conf {pick["confidence"]:.1%} &nbsp;·&nbsp; '
+                    f'Sentiment {trend_icon}'
+                    f'</span>'
+                    f'</div>'
+                    f'<div class="score-track">'
+                    f'<div class="score-fill" '
+                    f'style="width:{score_pct}%;"></div>'
+                    f'</div>',
+                    unsafe_allow_html=True
+                )
 
                 if pick.get("earnings_message"):
                     if pick.get("earnings_risk") == "medium":
                         st.warning(
-                            f"⚠️ {pick['earnings_message']} — "
-                            f"Consider reducing position size."
+                            f"⚠️ {pick['earnings_message']}"
                         )
                     elif pick.get("earnings_risk") == "low":
                         st.info(f"📅 {pick['earnings_message']}")
 
                 st.markdown(
-                    '<div class="section-header">Trade levels</div>',
+                    '<div class="level-label">Trade levels</div>',
                     unsafe_allow_html=True
                 )
                 c1, c2, c3, c4, c5, c6 = st.columns(6)
                 c1.metric("Entry", f"₹{pick['entry']:,.2f}")
-                c2.metric("Stop loss", f"₹{pick['stop_loss']:,.2f}")
-                c3.metric("Target 1", f"₹{pick['target1']:,.2f}")
-                c4.metric("Target 2", f"₹{pick['target2']:,.2f}")
+                c2.metric(
+                    "Stop loss", f"₹{pick['stop_loss']:,.2f}"
+                )
+                c3.metric(
+                    "Target 1", f"₹{pick['target1']:,.2f}"
+                )
+                c4.metric(
+                    "Target 2", f"₹{pick['target2']:,.2f}"
+                )
                 c5.metric("R/R", f"1:{pick['rr1']:.1f}")
                 if pick["shares"] > 0:
                     c6.metric("Shares", f"{pick['shares']}")
                 else:
                     c6.metric("Shares", "—")
                     if pick.get("capital_note"):
-                        st.caption(f"⚠️ {pick['capital_note']}")
+                        st.caption(f"↑ {pick['capital_note']}")
 
                 st.markdown(
-                    '<div class="section-header">Indicators</div>',
+                    '<div class="level-label">Indicators</div>',
                     unsafe_allow_html=True
                 )
                 m1, m2, m3, m4, m5, m6 = st.columns(6)
                 m1.metric("RSI", f"{pick['rsi']}")
                 m2.metric(
-                    "Confidence", f"{pick['confidence']:.1%}"
+                    "Confidence",
+                    f"{pick['confidence']:.1%}"
                 )
                 m3.metric("Buy prob", f"{pick['buy_prob']:.1%}")
                 m4.metric(
                     "Sentiment",
-                    f"{pick['sentiment'].capitalize()}"
+                    pick['sentiment'].capitalize()
                 )
                 m5.metric("Sharpe", f"{pick['sharpe']}")
-                m6.metric(
-                    "Max DD", f"{pick['max_drawdown']}"
-                )
+                m6.metric("Max DD", f"{pick['max_drawdown']}")
 
                 st.markdown(
-                    '<div class="section-header">'
+                    '<div class="level-label">'
                     'Score breakdown</div>',
                     unsafe_allow_html=True
                 )
@@ -745,11 +763,11 @@ with tab1:
                     cols[j].metric(layer, pts)
 
                 st.markdown(
-                    '<div class="section-header">'
-                    'AI trade thesis</div>',
+                    '<div class="level-label">'
+                    'Trade thesis</div>',
                     unsafe_allow_html=True
                 )
-                with st.spinner("Generating thesis..."):
+                with st.spinner(""):
                     thesis = generate_pick_thesis(
                         ticker=pick["ticker"],
                         signal=pick["signal"],
@@ -767,49 +785,49 @@ with tab1:
                         relative_strength=pick["relative_strength"]
                     )
                 st.markdown(
-                    f'<div class="thesis-card">{thesis}</div>',
+                    f'<div class="thesis-box">{thesis}</div>',
                     unsafe_allow_html=True
                 )
 
-                if pick["shares"] > 0 and pick["position_cost"] > 0:
+                if pick["shares"] > 0:
                     st.markdown(
-                        f'<div style="margin-top:12px;font-size:12px;'
-                        f'color:{t["text2"]};">'
-                        f'Position: {pick["shares"]} shares &nbsp;·&nbsp; '
-                        f'Cost: ₹{pick["position_cost"]:,.2f} '
-                        f'&nbsp;·&nbsp; '
-                        f'Max loss: ₹'
-                        f'{pick["risk_amount"] * pick["shares"]:,.2f}'
-                        f'</div>',
+                        f'<div style="margin-top:10px;'
+                        f'font-size:11px;color:{t["text2"]};">'
+                        f'{pick["shares"]} shares · '
+                        f'₹{pick["position_cost"]:,.2f} cost · '
+                        f'₹{pick["risk_amount"]*pick["shares"]:,.2f}'
+                        f' max loss</div>',
                         unsafe_allow_html=True
                     )
 
 with tab2:
     st.sidebar.markdown(
-        f'<div class="sidebar-section">Stock selection</div>',
+        f'<div class="sidebar-label">Stock selection</div>',
         unsafe_allow_html=True
     )
     if mode == "Popular stocks":
-        ticker = st.sidebar.selectbox("Select stock", NIFTY_50)
+        ticker = st.sidebar.selectbox(
+            "Select stock", NIFTY_50
+        )
     else:
         raw = st.sidebar.text_input(
-            "Enter NSE symbol",
+            "NSE symbol",
             placeholder="e.g. ZOMATO, IRFC"
         )
         if raw:
             with st.sidebar:
-                with st.spinner("Validating..."):
+                with st.spinner(""):
                     result = validate_ticker(raw)
             if result:
-                st.sidebar.success(f"✓ Found: {result}")
+                st.sidebar.success(f"✓ {result}")
                 ticker = result
             else:
-                st.sidebar.error("Symbol not found")
+                st.sidebar.error("Not found")
                 ticker = NIFTY_50[0]
         else:
             ticker = NIFTY_50[0]
 
-    with st.spinner("Loading market data..."):
+    with st.spinner(""):
         df = get_stock_data(ticker, period="2y")
         if df is not None:
             df = add_indicators(df)
@@ -817,11 +835,13 @@ with tab2:
         nifty_df = get_nifty_data()
         correlation = (
             get_nifty_correlation(df, nifty_df)
-            if df is not None and nifty_df is not None else None
+            if df is not None and nifty_df is not None
+            else None
         )
         rs = (
             get_relative_strength(df, nifty_df)
-            if df is not None and nifty_df is not None else None
+            if df is not None and nifty_df is not None
+            else None
         )
         regime = (
             get_market_regime(nifty_df)
@@ -833,39 +853,35 @@ with tab2:
         )
 
     if df is None or df.empty:
-        st.error("Could not load data for this ticker.")
+        st.error("Could not load data.")
     else:
         price = float(df["Close"].iloc[-1])
         prev = float(df["Close"].iloc[-2])
         change = ((price - prev) / prev) * 100
         sector = get_sector(ticker)
-        change_color = t["green"] if change >= 0 else t["red"]
-        change_arrow = "▲" if change >= 0 else "▼"
+        change_class = (
+            "stock-header-change-pos" if change >= 0
+            else "stock-header-change-neg"
+        )
+        arrow = "▲" if change >= 0 else "▼"
 
         st.markdown(f"""
         <div style="margin-bottom:20px;">
             <div style="display:flex;align-items:baseline;
-            gap:12px;flex-wrap:wrap;">
-                <span style="font-size:28px;font-weight:700;
-                color:{t['text']};font-family:'JetBrains Mono',
-                monospace;">
-                    {ticker.replace('.NS', '')}
+            gap:14px;flex-wrap:wrap;">
+                <span class="stock-header-name">
+                    {ticker.replace('.NS','')}
                 </span>
-                <span style="font-size:24px;font-weight:600;
-                color:{t['text']};font-family:'JetBrains Mono',
-                monospace;">
+                <span class="stock-header-price">
                     ₹{price:,.2f}
                 </span>
-                <span style="font-size:16px;font-weight:500;
-                color:{change_color};">
-                    {change_arrow} {abs(change):.2f}%
+                <span class="{change_class}">
+                    {arrow} {abs(change):.2f}%
                 </span>
             </div>
-            <div style="font-size:13px;color:{t['text2']};
-            margin-top:4px;">
+            <div class="stock-header-meta">
                 {fundamentals.get('Sector', sector)} · 
-                {fundamentals.get('Industry', 'N/A')} · 
-                Regime: 
+                {fundamentals.get('Industry','N/A')} · 
                 <span class="regime-{regime}">
                     {regime.upper()}
                 </span>
@@ -879,101 +895,129 @@ with tab2:
         c3.metric("MACD", f"{df['MACD'].iloc[-1]:.2f}")
         c4.metric(
             "52W High",
-            f"₹{fundamentals.get('52W High', 'N/A')}"
+            f"₹{fundamentals.get('52W High','N/A')}"
         )
         c5.metric(
             "52W Low",
-            f"₹{fundamentals.get('52W Low', 'N/A')}"
+            f"₹{fundamentals.get('52W Low','N/A')}"
         )
         c6.metric(
             "Nifty Corr",
             f"{correlation}" if correlation else "N/A"
         )
 
-        st.markdown('<div class="divider"></div>',
-                    unsafe_allow_html=True)
+        st.markdown(
+            '<div class="divider"></div>',
+            unsafe_allow_html=True
+        )
 
         fig = go.Figure()
         fig.add_trace(go.Candlestick(
-            x=df.index, open=df["Open"], high=df["High"],
-            low=df["Low"], close=df["Close"], name="Price",
+            x=df.index,
+            open=df["Open"], high=df["High"],
+            low=df["Low"], close=df["Close"],
+            name="Price",
             increasing_line_color=t["green"],
-            decreasing_line_color=t["red"]
+            decreasing_line_color=t["red"],
+            increasing_fillcolor=hex_to_rgba(t["green"], 0.7),
+            decreasing_fillcolor=hex_to_rgba(t["red"], 0.7)
         ))
         fig.add_trace(go.Scatter(
-            x=df.index, y=df["SMA_20"], name="SMA 20",
+            x=df.index, y=df["SMA_20"],
+            name="SMA 20",
             line=dict(color="#f0a500", width=1)
         ))
         fig.add_trace(go.Scatter(
-            x=df.index, y=df["SMA_50"], name="SMA 50",
+            x=df.index, y=df["SMA_50"],
+            name="SMA 50",
             line=dict(color=t["blue"], width=1)
         ))
         fig.add_trace(go.Scatter(
-            x=df.index, y=df["SMA_200"], name="SMA 200",
+            x=df.index, y=df["SMA_200"],
+            name="SMA 200",
             line=dict(color="#9b59b6", width=1)
         ))
         fig.add_trace(go.Scatter(
-            x=df.index, y=df["BB_upper"], name="BB Upper",
-            line=dict(color=t["text2"], width=1, dash="dash")
+            x=df.index, y=df["BB_upper"],
+            name="BB Upper",
+            line=dict(
+                color=hex_to_rgba(t["text2"], 0.4),
+                width=1, dash="dash"
+            )
         ))
         fig.add_trace(go.Scatter(
-            x=df.index, y=df["BB_lower"], name="BB Lower",
-            line=dict(color=t["text2"], width=1, dash="dash"),
+            x=df.index, y=df["BB_lower"],
+            name="BB Lower",
+            line=dict(
+                color=hex_to_rgba(t["text2"], 0.4),
+                width=1, dash="dash"
+            ),
             fill="tonexty",
-            fillcolor=f"{t['text2']}11"
+            fillcolor=hex_to_rgba(t["text2"], 0.04)
         ))
         for r in resistance_levels:
             fig.add_hline(
                 y=r, line_dash="dot",
-                line_color=t["red"], line_width=1,
-                annotation_text=f"R ₹{r:,.0f}",
+                line_color=hex_to_rgba(t["red"], 0.6),
+                line_width=1,
+                annotation_text=f"R {r:,.0f}",
                 annotation_position="right",
                 annotation_font_color=t["red"],
-                annotation_font_size=11
+                annotation_font_size=10
             )
         for s in support_levels:
             fig.add_hline(
                 y=s, line_dash="dot",
-                line_color=t["green"], line_width=1,
-                annotation_text=f"S ₹{s:,.0f}",
+                line_color=hex_to_rgba(t["green"], 0.6),
+                line_width=1,
+                annotation_text=f"S {s:,.0f}",
                 annotation_position="right",
                 annotation_font_color=t["green"],
-                annotation_font_size=11
+                annotation_font_size=10
             )
         fib_levels = get_fibonacci_levels(df)
         for name, level in fib_levels.items():
             fig.add_hline(
                 y=level, line_dash="dot",
-                line_color=t["gold"], line_width=0.5,
+                line_color=hex_to_rgba(t["gold"], 0.5),
+                line_width=0.5,
                 annotation_text=f"Fib {name}",
                 annotation_position="left",
                 annotation_font_color=t["gold"],
-                annotation_font_size=10
+                annotation_font_size=9
             )
         fig.update_layout(
             title=dict(
-                text=f"{ticker} — Price chart",
-                font=dict(color=t["text"], size=14)
+                text=f"{ticker.replace('.NS','')} · Price",
+                font=dict(
+                    color=t["text2"], size=12,
+                    family="Inter"
+                )
             ),
             xaxis_rangeslider_visible=False,
-            height=520,
+            height=500,
             paper_bgcolor=t["card"],
             plot_bgcolor=t["card"],
-            font=dict(color=t["text2"], family="Inter"),
+            font=dict(
+                color=t["text2"], family="Inter"
+            ),
             xaxis=dict(
                 gridcolor=t["border"],
-                showgrid=True
+                showgrid=True,
+                gridwidth=0.5
             ),
             yaxis=dict(
                 gridcolor=t["border"],
-                showgrid=True
+                showgrid=True,
+                gridwidth=0.5
             ),
             legend=dict(
                 bgcolor=t["bg2"],
                 bordercolor=t["border"],
                 borderwidth=1,
                 font=dict(size=11)
-            )
+            ),
+            margin=dict(l=0, r=80, t=36, b=0)
         )
         st.plotly_chart(fig, use_container_width=True)
 
@@ -984,38 +1028,48 @@ with tab2:
                 x=df.index, y=df["RSI"],
                 line=dict(color=t["accent"], width=1.5),
                 fill="tozeroy",
-                fillcolor=f"{t['accent']}15",
+                fillcolor=hex_to_rgba(t["accent"], 0.06),
                 name="RSI"
             ))
             fig_rsi.add_hline(
                 y=70, line_dash="dash",
-                line_color=t["red"], line_width=1,
-                annotation_text="Overbought",
+                line_color=t["red"], line_width=0.8,
+                annotation_text="70",
                 annotation_font_color=t["red"],
                 annotation_font_size=10
             )
             fig_rsi.add_hline(
                 y=30, line_dash="dash",
-                line_color=t["green"], line_width=1,
-                annotation_text="Oversold",
+                line_color=t["green"], line_width=0.8,
+                annotation_text="30",
                 annotation_font_color=t["green"],
                 annotation_font_size=10
             )
             fig_rsi.update_layout(
                 title=dict(
                     text="RSI (14)",
-                    font=dict(color=t["text"], size=13)
+                    font=dict(
+                        color=t["text2"], size=12,
+                        family="Inter"
+                    )
                 ),
-                height=220,
+                height=200,
                 showlegend=False,
                 paper_bgcolor=t["card"],
                 plot_bgcolor=t["card"],
                 font=dict(color=t["text2"]),
-                xaxis=dict(gridcolor=t["border"]),
-                yaxis=dict(gridcolor=t["border"],
-                           range=[0, 100])
+                xaxis=dict(
+                    gridcolor=t["border"], gridwidth=0.5
+                ),
+                yaxis=dict(
+                    gridcolor=t["border"],
+                    gridwidth=0.5, range=[0, 100]
+                ),
+                margin=dict(l=0, r=0, t=32, b=0)
             )
-            st.plotly_chart(fig_rsi, use_container_width=True)
+            st.plotly_chart(
+                fig_rsi, use_container_width=True
+            )
 
         with col2:
             fig_macd = go.Figure()
@@ -1031,30 +1085,40 @@ with tab2:
             ))
             fig_macd.add_trace(go.Bar(
                 x=df.index, y=df["MACD_hist"],
-                name="Histogram",
+                name="Hist",
                 marker_color=[
                     t["green"] if v >= 0 else t["red"]
                     for v in df["MACD_hist"]
                 ],
-                opacity=0.6
+                opacity=0.5
             ))
             fig_macd.update_layout(
                 title=dict(
                     text="MACD",
-                    font=dict(color=t["text"], size=13)
+                    font=dict(
+                        color=t["text2"], size=12,
+                        family="Inter"
+                    )
                 ),
-                height=220,
+                height=200,
                 paper_bgcolor=t["card"],
                 plot_bgcolor=t["card"],
                 font=dict(color=t["text2"]),
-                xaxis=dict(gridcolor=t["border"]),
-                yaxis=dict(gridcolor=t["border"]),
+                xaxis=dict(
+                    gridcolor=t["border"], gridwidth=0.5
+                ),
+                yaxis=dict(
+                    gridcolor=t["border"], gridwidth=0.5
+                ),
                 legend=dict(
                     bgcolor="transparent",
                     font=dict(size=10)
-                )
+                ),
+                margin=dict(l=0, r=0, t=32, b=0)
             )
-            st.plotly_chart(fig_macd, use_container_width=True)
+            st.plotly_chart(
+                fig_macd, use_container_width=True
+            )
 
         fig_vol = go.Figure()
         fig_vol.add_trace(go.Bar(
@@ -1065,31 +1129,39 @@ with tab2:
                 else t["red"]
                 for i in range(len(df))
             ],
-            opacity=0.7,
+            opacity=0.6,
             name="Volume"
         ))
         fig_vol.add_trace(go.Scatter(
             x=df.index, y=df["Volume_SMA"],
             name="SMA 20",
-            line=dict(color=t["gold"], width=1.5)
+            line=dict(color=t["gold"], width=1.2)
         ))
         fig_vol.update_layout(
             title=dict(
                 text="Volume",
-                font=dict(color=t["text"], size=13)
+                font=dict(
+                    color=t["text2"], size=12,
+                    family="Inter"
+                )
             ),
-            height=180,
+            height=160,
             showlegend=False,
             paper_bgcolor=t["card"],
             plot_bgcolor=t["card"],
             font=dict(color=t["text2"]),
-            xaxis=dict(gridcolor=t["border"]),
-            yaxis=dict(gridcolor=t["border"])
+            xaxis=dict(
+                gridcolor=t["border"], gridwidth=0.5
+            ),
+            yaxis=dict(
+                gridcolor=t["border"], gridwidth=0.5
+            ),
+            margin=dict(l=0, r=0, t=32, b=0)
         )
         st.plotly_chart(fig_vol, use_container_width=True)
 
         st.markdown(
-            '<div class="section-header">Earnings calendar</div>',
+            '<div class="section-label">Earnings</div>',
             unsafe_allow_html=True
         )
         earnings_map = get_nse_earnings_calendar()
@@ -1097,40 +1169,41 @@ with tab2:
         if earnings["has_upcoming"]:
             if earnings["risk_level"] == "high":
                 st.error(
-                    f"🚨 EARNINGS ALERT: {earnings['message']} — "
-                    f"Consider waiting until after results."
+                    f"🚨 {earnings['message']} — "
+                    f"Consider waiting."
                 )
             elif earnings["risk_level"] == "medium":
                 st.warning(
                     f"⚠️ {earnings['message']} — "
-                    f"Elevated volatility expected."
+                    f"Reduce position size."
                 )
-            elif earnings["risk_level"] == "recent":
-                st.info(f"📅 {earnings['message']}")
             else:
                 st.info(f"📅 {earnings['message']}")
         else:
-            st.success("✅ No earnings due in the next 30 days")
+            st.success("No earnings due in 30 days")
 
         st.markdown(
-            '<div class="section-header">Model signal</div>',
+            '<div class="section-label">Model signal</div>',
             unsafe_allow_html=True
         )
-        with st.spinner("Running ensemble model..."):
-            model, scaler, features, accuracy = train_model(ticker)
-            signal, confidence, buy_prob, sell_prob = get_signal(
-                model, scaler, df, features
+        with st.spinner(""):
+            model, scaler, features, accuracy = (
+                train_model(ticker)
+            )
+            signal, confidence, buy_prob, sell_prob = (
+                get_signal(model, scaler, df, features)
             )
             risk_metrics = get_risk_metrics(df)
 
-        signal_badge = (
-            "signal-badge-buy" if signal == "BUY"
-            else "signal-badge-sell"
+        sig_badge = (
+            "badge-buy" if signal == "BUY"
+            else "badge-sell"
         )
         st.markdown(
-            f'<span class="{signal_badge}">'
-            f'{signal}</span>&nbsp;&nbsp;'
-            f'<span style="color:{t["text2"]};font-size:14px;">'
+            f'<span class="{sig_badge}">{signal}</span>'
+            f'&nbsp;&nbsp;'
+            f'<span style="font-size:12px;'
+            f'color:{t["text2"]};">'
             f'Confidence {confidence:.1%} · '
             f'Accuracy {accuracy:.1%}</span>',
             unsafe_allow_html=True
@@ -1141,8 +1214,12 @@ with tab2:
         r1.metric("Buy prob", f"{buy_prob:.1%}")
         r2.metric("Sell prob", f"{sell_prob:.1%}")
         r3.metric("Sharpe", risk_metrics["Sharpe Ratio"])
-        r4.metric("Max drawdown", risk_metrics["Max Drawdown"])
-        r5.metric("Volatility", risk_metrics["Annual Volatility"])
+        r4.metric(
+            "Max drawdown", risk_metrics["Max Drawdown"]
+        )
+        r5.metric(
+            "Volatility", risk_metrics["Annual Volatility"]
+        )
         r6.metric(
             "Rel. strength",
             f"{rs:+.1f}%" if rs else "N/A"
@@ -1150,18 +1227,22 @@ with tab2:
 
         if fundamentals:
             st.markdown(
-                '<div class="section-header">Fundamentals</div>',
+                '<div class="section-label">Fundamentals</div>',
                 unsafe_allow_html=True
             )
-            keys = [k for k in fundamentals
-                    if k not in ["Sector", "Industry"]]
+            keys = [
+                k for k in fundamentals
+                if k not in ["Sector", "Industry"]
+            ]
             fcols = st.columns(4)
             for i, k in enumerate(keys):
                 v = fundamentals[k]
                 if k == "Market Cap" and isinstance(
                     v, (int, float)
                 ):
-                    fcols[i % 4].metric(k, f"₹{v/1e9:.0f}B")
+                    fcols[i % 4].metric(
+                        k, f"₹{v/1e9:.0f}B"
+                    )
                 elif k in [
                     "Dividend Yield", "ROE",
                     "Revenue Growth", "Promoter Holding"
@@ -1170,15 +1251,15 @@ with tab2:
                 else:
                     fcols[i % 4].metric(
                         k,
-                        f"{round(v, 2)}"
+                        f"{round(v,2)}"
                         if isinstance(v, float) else str(v)
                     )
 
         st.markdown(
-            '<div class="section-header">News sentiment</div>',
+            '<div class="section-label">News sentiment</div>',
             unsafe_allow_html=True
         )
-        with st.spinner("Analysing news..."):
+        with st.spinner(""):
             news_data = get_news_sentiment(ticker)
 
         sentiment = news_data["sentiment"]
@@ -1193,10 +1274,10 @@ with tab2:
         sentiment_score = news_data["sentiment_score"]
         headline_count = news_data["headline_count"]
 
-        trend_icon = (
-            "📈" if trend == "improving"
-            else "📉" if trend == "deteriorating"
-            else "➡️"
+        trend_arrow = (
+            "↑" if trend == "improving"
+            else "↓" if trend == "deteriorating"
+            else "→"
         )
         sent_color = (
             t["green"] if sentiment == "positive"
@@ -1205,132 +1286,87 @@ with tab2:
         )
 
         st.markdown(f"""
-        <div style="background:{t['card']};
-        border:1px solid {t['border']};
-        border-radius:10px;padding:16px;margin-bottom:16px;">
-            <div style="display:flex;gap:24px;
-            flex-wrap:wrap;margin-bottom:12px;">
-                <div>
-                    <div style="font-size:11px;
-                    color:{t['text2']};
-                    text-transform:uppercase;
-                    letter-spacing:0.5px;
-                    margin-bottom:4px;">Sentiment</div>
-                    <div style="font-size:18px;
-                    font-weight:600;color:{sent_color};">
-                        {sentiment.capitalize()}
-                    </div>
+        <div class="sentiment-grid">
+            <div class="sentiment-cell">
+                <div class="sentiment-cell-label">
+                    Sentiment
                 </div>
-                <div>
-                    <div style="font-size:11px;
-                    color:{t['text2']};
-                    text-transform:uppercase;
-                    letter-spacing:0.5px;
-                    margin-bottom:4px;">Score</div>
-                    <div style="font-size:18px;
-                    font-weight:600;
-                    color:{t['text']};
-                    font-family:'JetBrains Mono',monospace;">
-                        {sentiment_score:+.2f}
-                    </div>
-                </div>
-                <div>
-                    <div style="font-size:11px;
-                    color:{t['text2']};
-                    text-transform:uppercase;
-                    letter-spacing:0.5px;
-                    margin-bottom:4px;">Trend</div>
-                    <div style="font-size:18px;
-                    font-weight:600;color:{t['text']};">
-                        {trend_icon} {trend.capitalize()}
-                    </div>
-                </div>
-                <div>
-                    <div style="font-size:11px;
-                    color:{t['text2']};
-                    text-transform:uppercase;
-                    letter-spacing:0.5px;
-                    margin-bottom:4px;">Positive</div>
-                    <div style="font-size:18px;
-                    font-weight:600;color:{t['green']};
-                    font-family:'JetBrains Mono',monospace;">
-                        {distribution.get('positive', 0):.1%}
-                    </div>
-                </div>
-                <div>
-                    <div style="font-size:11px;
-                    color:{t['text2']};
-                    text-transform:uppercase;
-                    letter-spacing:0.5px;
-                    margin-bottom:4px;">Negative</div>
-                    <div style="font-size:18px;
-                    font-weight:600;color:{t['red']};
-                    font-family:'JetBrains Mono',monospace;">
-                        {distribution.get('negative', 0):.1%}
-                    </div>
-                </div>
-                <div>
-                    <div style="font-size:11px;
-                    color:{t['text2']};
-                    text-transform:uppercase;
-                    letter-spacing:0.5px;
-                    margin-bottom:4px;">Headlines</div>
-                    <div style="font-size:18px;
-                    font-weight:600;color:{t['text']};
-                    font-family:'JetBrains Mono',monospace;">
-                        {headline_count}
-                    </div>
+                <div class="sentiment-cell-value"
+                style="color:{sent_color};">
+                    {sentiment.capitalize()}
                 </div>
             </div>
+            <div class="sentiment-cell">
+                <div class="sentiment-cell-label">Score</div>
+                <div class="sentiment-cell-value">
+                    {sentiment_score:+.2f}
+                </div>
+            </div>
+            <div class="sentiment-cell">
+                <div class="sentiment-cell-label">Trend</div>
+                <div class="sentiment-cell-value">
+                    {trend_arrow} {trend.capitalize()}
+                </div>
+            </div>
+            <div class="sentiment-cell">
+                <div class="sentiment-cell-label">Positive</div>
+                <div class="sentiment-cell-value"
+                style="color:{t['green']};">
+                    {distribution.get('positive',0):.1%}
+                </div>
+            </div>
+            <div class="sentiment-cell">
+                <div class="sentiment-cell-label">Negative</div>
+                <div class="sentiment-cell-value"
+                style="color:{t['red']};">
+                    {distribution.get('negative',0):.1%}
+                </div>
+            </div>
+            <div class="sentiment-cell">
+                <div class="sentiment-cell-label">
+                    Headlines
+                </div>
+                <div class="sentiment-cell-value">
+                    {headline_count}
+                </div>
+            </div>
+        </div>
         """, unsafe_allow_html=True)
 
         if risk_flags:
-            st.markdown(
-                f'<div style="background:{t["red"]}22;'
-                f'border:1px solid {t["red"]}44;'
-                f'border-radius:6px;padding:8px 12px;'
-                f'color:{t["red"]};font-size:13px;'
-                f'margin-bottom:8px;">⚠️ Risk flags: '
-                f'{", ".join(risk_flags)}</div>',
-                unsafe_allow_html=True
+            st.error(
+                f"Risk flags: {', '.join(risk_flags)}"
             )
 
+        kw_html = ""
         if pos_kw:
-            tags = "".join(
-                [f'<span class="tag" '
-                 f'style="color:{t["green"]};'
-                 f'border-color:{t["green"]}44;">'
-                 f'{k}</span>' for k in pos_kw]
-            )
-            st.markdown(
-                f'<div style="margin-bottom:8px;">'
-                f'<span style="font-size:12px;'
-                f'color:{t["text2"]};">Positive: </span>'
-                f'{tags}</div>',
-                unsafe_allow_html=True
-            )
-
+            kw_html += "".join([
+                f'<span class="keyword-tag keyword-pos">'
+                f'{k}</span>'
+                for k in pos_kw
+            ])
         if neg_kw:
-            tags = "".join(
-                [f'<span class="tag" '
-                 f'style="color:{t["red"]};'
-                 f'border-color:{t["red"]}44;">'
-                 f'{k}</span>' for k in neg_kw]
-            )
+            kw_html += "".join([
+                f'<span class="keyword-tag keyword-neg">'
+                f'{k}</span>'
+                for k in neg_kw
+            ])
+        if kw_html:
             st.markdown(
-                f'<div style="margin-bottom:8px;">'
-                f'<span style="font-size:12px;'
-                f'color:{t["text2"]};">Negative: </span>'
-                f'{tags}</div>',
+                f'<div style="margin-bottom:12px;">'
+                f'{kw_html}</div>',
                 unsafe_allow_html=True
             )
-
-        st.markdown('</div>', unsafe_allow_html=True)
 
         if sources:
-            st.caption(f"Sources: {' · '.join(sources)}")
+            st.markdown(
+                f'<div style="font-size:11px;'
+                f'color:{t["text2"]};margin-bottom:10px;">'
+                f'Sources: {" · ".join(sources)}</div>',
+                unsafe_allow_html=True
+            )
 
-        st.markdown("**Recent headlines:**")
+        headlines_html = ""
         for h in headlines:
             text_lower = h.lower()
             has_neg = any(
@@ -1341,24 +1377,28 @@ with tab2:
                 w in text_lower
                 for w in POSITIVE_KEYWORDS[:10]
             )
-            color = (
-                t["red"] if has_neg
-                else t["green"] if has_pos
-                else t["text2"]
+            css_class = (
+                "neg-text" if has_neg
+                else "pos-text" if has_pos
+                else "neu-text"
             )
-            icon = "🔴" if has_neg else "🟢" if has_pos else "⚪"
-            st.markdown(
-                f'<div style="color:{color};font-size:13px;'
-                f'padding:6px 0;border-bottom:1px solid '
-                f'{t["border"]};">{icon} {h}</div>',
-                unsafe_allow_html=True
+            dot = (
+                "●" if has_neg or has_pos else "○"
+            )
+            headlines_html += (
+                f'<div class="headline-item">'
+                f'<span class="{css_class}">{dot}</span>'
+                f'<span class="{css_class}">{h}</span>'
+                f'</div>'
             )
 
+        st.markdown(headlines_html, unsafe_allow_html=True)
+
         st.markdown(
-            '<div class="section-header">AI analysis</div>',
+            '<div class="section-label">AI analysis</div>',
             unsafe_allow_html=True
         )
-        with st.spinner("Generating investment brief..."):
+        with st.spinner(""):
             explanation = explain_signal(
                 ticker=ticker,
                 signal=signal,
@@ -1381,13 +1421,13 @@ with tab2:
                 market_regime=regime
             )
         st.markdown(
-            f'<div class="thesis-card">{explanation}</div>',
+            f'<div class="thesis-box">{explanation}</div>',
             unsafe_allow_html=True
         )
 
 with tab3:
     st.markdown(
-        '<div class="section-header">30-day price forecast</div>',
+        '<div class="section-label">30-day forecast</div>',
         unsafe_allow_html=True
     )
     try:
@@ -1395,7 +1435,7 @@ with tab3:
         ticker_f = st.selectbox(
             "Select stock", NIFTY_50, key="fc"
         )
-        with st.spinner("Running Prophet forecast..."):
+        with st.spinner(""):
             df_f = get_stock_data(ticker_f, period="2y")
             if df_f is not None:
                 pf = df_f.reset_index()[
@@ -1416,51 +1456,63 @@ with tab3:
                 fig_f.add_trace(go.Scatter(
                     x=pf["ds"], y=pf["y"],
                     name="Actual",
-                    line=dict(color=t["text"], width=1.5)
+                    line=dict(color=t["text2"], width=1.5)
                 ))
                 fig_f.add_trace(go.Scatter(
-                    x=forecast["ds"], y=forecast["yhat"],
+                    x=forecast["ds"],
+                    y=forecast["yhat"],
                     name="Forecast",
                     line=dict(color=t["accent"], width=2)
                 ))
                 fig_f.add_trace(go.Scatter(
                     x=forecast["ds"],
                     y=forecast["yhat_upper"],
-                    line=dict(
-                        color=f"{t['accent']}33", width=0
-                    ),
+                    line=dict(width=0),
                     showlegend=False
                 ))
                 fig_f.add_trace(go.Scatter(
                     x=forecast["ds"],
                     y=forecast["yhat_lower"],
-                    line=dict(
-                        color=f"{t['accent']}33", width=0
-                    ),
+                    line=dict(width=0),
                     fill="tonexty",
-                    fillcolor=f"{t['accent']}22",
+                    fillcolor=hex_to_rgba(t["accent"], 0.12),
                     showlegend=False
                 ))
                 fig_f.update_layout(
                     title=dict(
-                        text=f"{ticker_f} — 30-day forecast",
-                        font=dict(color=t["text"], size=14)
+                        text=f"{ticker_f.replace('.NS','')} · "
+                             f"30-day forecast",
+                        font=dict(
+                            color=t["text2"], size=12,
+                            family="Inter"
+                        )
                     ),
-                    height=500,
+                    height=480,
                     paper_bgcolor=t["card"],
                     plot_bgcolor=t["card"],
                     font=dict(color=t["text2"]),
-                    xaxis=dict(gridcolor=t["border"]),
-                    yaxis=dict(gridcolor=t["border"]),
+                    xaxis=dict(
+                        gridcolor=t["border"],
+                        gridwidth=0.5
+                    ),
+                    yaxis=dict(
+                        gridcolor=t["border"],
+                        gridwidth=0.5
+                    ),
                     legend=dict(
                         bgcolor=t["bg2"],
                         bordercolor=t["border"],
                         borderwidth=1
-                    )
+                    ),
+                    margin=dict(l=0, r=0, t=36, b=0)
                 )
-                st.plotly_chart(fig_f, use_container_width=True)
+                st.plotly_chart(
+                    fig_f, use_container_width=True
+                )
 
-                last_forecast = float(forecast["yhat"].iloc[-1])
+                last_forecast = float(
+                    forecast["yhat"].iloc[-1]
+                )
                 last_actual = float(pf["y"].iloc[-1])
                 change_f = (
                     (last_forecast - last_actual) /
@@ -1468,27 +1520,26 @@ with tab3:
                 )
                 f1, f2, f3 = st.columns(3)
                 f1.metric(
-                    "Current price", f"₹{last_actual:,.2f}"
+                    "Current", f"₹{last_actual:,.2f}"
                 )
                 f2.metric(
                     "Forecast (30d)",
                     f"₹{last_forecast:,.2f}"
                 )
                 f3.metric(
-                    "Expected change", f"{change_f:+.1f}%"
+                    "Expected change",
+                    f"{change_f:+.1f}%"
                 )
                 st.caption(
-                    "Prophet trend + seasonality model. "
+                    "Prophet trend model. "
                     "Not financial advice."
                 )
     except ImportError:
-        st.warning(
-            "Run `pip install prophet` to enable forecasting."
-        )
+        st.info("Install prophet to enable forecasting.")
 
 with tab4:
     st.markdown(
-        '<div class="section-header">Portfolio tracker</div>',
+        '<div class="section-label">Portfolio tracker</div>',
         unsafe_allow_html=True
     )
     with st.form("portfolio_form"):
@@ -1496,16 +1547,19 @@ with tab4:
         for idx in range(5):
             col1, col2, col3 = st.columns(3)
             t_pick = col1.selectbox(
-                f"Stock {idx+1}", ["--"] + NIFTY_50,
+                f"Stock {idx+1}",
+                ["--"] + NIFTY_50,
                 key=f"pt{idx}"
             )
             q = col2.number_input(
                 "Quantity",
-                min_value=0, value=0, key=f"pq{idx}"
+                min_value=0, value=0,
+                key=f"pq{idx}"
             )
             p = col3.number_input(
                 "Avg buy price ₹",
-                min_value=0.0, value=0.0, key=f"pp{idx}"
+                min_value=0.0, value=0.0,
+                key=f"pp{idx}"
             )
             if t_pick != "--" and q > 0:
                 holdings.append((t_pick, q, p))
@@ -1538,8 +1592,8 @@ with tab4:
                     (pnl / invested * 100)
                     if invested > 0 else 0
                 )
-                model_p, sc_p, f_p, acc_p = train_model(
-                    ticker_p
+                model_p, sc_p, f_p, acc_p = (
+                    train_model(ticker_p)
                 )
                 sig_p, conf_p, _, _ = get_signal(
                     model_p, sc_p, df_p, f_p
@@ -1575,10 +1629,9 @@ with tab4:
                 (total_pnl / total_invested * 100)
                 if total_invested > 0 else 0
             )
-            pnl_color = t["green"] if total_pnl >= 0 else t["red"]
             pc1, pc2, pc3 = st.columns(3)
             pc1.metric(
-                "Total invested",
+                "Invested",
                 f"₹{total_invested:,.2f}"
             )
             pc2.metric(
@@ -1590,24 +1643,26 @@ with tab4:
                 f"₹{total_pnl:+,.2f}",
                 f"{total_pnl_pct:+.1f}%"
             )
-
             st.dataframe(
                 pd.DataFrame(portfolio_data),
                 use_container_width=True
             )
-
             fig_pie = px.pie(
                 values=[d["Qty"] for d in portfolio_data],
                 names=[d["Stock"] for d in portfolio_data],
-                title="Portfolio allocation",
+                title="Allocation",
                 color_discrete_sequence=[
-                    t["accent"], t["green"], t["blue"],
-                    t["gold"], t["red"]
+                    t["accent"], t["green"],
+                    t["blue"], t["gold"], t["red"]
                 ]
             )
             fig_pie.update_layout(
                 paper_bgcolor=t["card"],
                 font=dict(color=t["text"]),
-                title_font_color=t["text"]
+                title_font=dict(
+                    color=t["text2"], size=12
+                )
             )
-            st.plotly_chart(fig_pie, use_container_width=True)
+            st.plotly_chart(
+                fig_pie, use_container_width=True
+            )

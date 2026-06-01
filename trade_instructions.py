@@ -17,11 +17,11 @@ def get_entry_instruction(pick, capital, risk_pct):
     max_loss = pick.get("max_loss") or (
     pick.get("risk_amount", 0) * pick.get("shares", 1)
 )
-    holding = pick["holding_days"]
-    rr = pick["rr1"]
-    risk_level = pick["risk_level"]
-    confidence = pick["confidence"]
-    regime = pick["market_regime"]
+    holding = pick.get("holding_days", 7)
+    rr = pick.get("rr1", 2.0)
+    risk_level = pick.get("risk_level", "MEDIUM")
+    confidence = pick.get("confidence", 0.6)
+    regime = pick.get("market_regime", "unknown")
 
     # Entry zone — allow 0.5% above entry
     entry_low = round(entry * 0.998, 2)

@@ -14,7 +14,9 @@ def get_entry_instruction(pick, capital, risk_pct):
     t2 = pick["target2"]
     shares = pick["shares"]
     cost = pick["position_cost"]
-    max_loss = pick["max_loss"]
+    max_loss = pick.get("max_loss") or (
+    pick.get("risk_amount", 0) * pick.get("shares", 1)
+)
     holding = pick["holding_days"]
     rr = pick["rr1"]
     risk_level = pick["risk_level"]

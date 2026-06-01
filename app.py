@@ -769,9 +769,13 @@ with tab1:
                     f"{pick['shares']}"
                     if pick['shares'] > 0 else "—"
                 )
+                max_loss_val = pick.get("max_loss") or (
+                    pick.get("risk_amount", 0) *
+                    pick.get("shares", 1)
+                )
                 c7.metric(
                     "Max loss",
-                    f"₹{pick['max_loss']:,.2f}"
+                    f"₹{max_loss_val:,.2f}"
                 )
 
                 # Signal breakdown table

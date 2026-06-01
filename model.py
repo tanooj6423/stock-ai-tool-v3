@@ -162,3 +162,98 @@ def train_model_fast(ticker):
         return xgb, scaler, features, round(float(acc), 3)
     except Exception:
         return None, None, None, 0.5
+    
+def predict_holding_days(df, signal, confidence, regime, rs):
+    try:
+        score = 0
+        rsi = float(df["RSI"].iloc[-1])
+        macd = float(df["MACD"].iloc[-1])
+        macd_hist = float(df["MACD_hist"].iloc[-1])
+        vol_ratio = float(df["Volume_ratio"].iloc[-1])
+        price = float(df["Close"].iloc[-1])
+        sma20 = float(df["SMA_20"].iloc[-1])
+        sma50 = float(df["SMA_50"].iloc[-1])
+        sma200 = float(df["SMA_200"].iloc[-1])
+        atr = float(df["ATR"].iloc[-1])
+        volatility = float(df["Volatility"].iloc[-1]) if "Volatility" in df.columns else 0.02
+
+        # Factor 1 - RSI position (higher RSI = less room = shorter hold)
+        if 40 <= rsi <= 55:
+            score += 3  # early in move
+        elif 55 < rsi <= 65:
+            score += 2  # mid move
+        elif rsi > 65:
+            score += 1  # late in move, exit sooner
+        else:
+            score += 2  # oversold bounce
+
+        # Factor 2 - MACD momentum
+        if macd > 0 and macd_hist > 0:
+            score += 3  # strong momentum
+        elif macd > 0 or macd_hist > 0:
+            score += 2  # moderate
+        else:
+            score += 1  # weak
+
+        # Factor 3 - Trend alignment
+        above_sma20 = price > sma20
+        above_sma50 = price > sma50
+        above_sma200 = price > sma200
+        trend_count = sum([above_sma20, above_sma50, above_sma200])
+        score += trend_count  # 0-3 points
+
+        # Factor 4 - Volume confirmation
+        if vol_ratio >= 1.5:
+            score += 2
+        elif vol_ratio >= 1.1:
+            score += 1
+
+        # Factor 5 - Market regime
+        if regime == "bull":
+            score += 3
+        elif regime == "sideways":
+            score += 2
+        elif regime == "unknown":
+            score += 1
+        else:  # bear
+            score += 0
+
+        # Factor 6 - Relative strength
+        if rs is not None:
+            if rs >= 5:
+                score += 2
+            elif rs >= 0:
+                score += 1
+
+        # Factor 7 - Volatility (high volatility = shorter hold)
+        daily_vol = volatility
+        if daily_vol < 0.015:
+            score += 2  # low vol, can hold longer
+        elif daily_vol < 0.025:
+            score += 1
+        else:
+            score += 0  # high vol, exit faster
+
+        # Factor 8 - Model confidence
+        if confidence >= 0.80:
+            score += 2
+        elif confidence >= 0.70:
+            score += 1
+
+        # Map score to holding days
+        # Max possible score = 3+3+3+2+3+2+2+2 = 20
+        if score >= 16:
+            return 12
+        elif score >= 13:
+            return 10
+        elif score >= 10:
+            return 8
+        elif score >= 7:
+            return 6
+        elif score >= 4:
+            return 4
+        else:
+            return 3
+
+    except Exception:
+        return 5  # default fallback

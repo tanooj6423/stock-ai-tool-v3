@@ -6,7 +6,8 @@ from data import (get_stock_data, add_indicators, get_weekly_data,
                   get_nifty_correlation, get_relative_strength,
                   get_market_regime, get_sector_momentum,
                   get_fibonacci_levels, get_nifty_data)
-from model import train_model_fast, get_signal, get_risk_metrics
+from model import (train_model_fast, get_signal,
+                   get_risk_metrics, predict_holding_days)
 from sentiment import get_news_sentiment
 from universe import get_sector, SECTOR_INDICES, is_commodity
 from earnings import get_earnings_status, get_nse_earnings_calendar
@@ -32,9 +33,8 @@ def score_multiframe(df_daily):
         above_sma50 = current > sma50.iloc[-1]
         above_sma200 = current > sma200.iloc[-1]
         golden_cross = sma50.iloc[-1] > sma200.iloc[-1]
-        weekly_close = close.iloc[-1]
         weekly_sma = close.tail(5).mean()
-        weekly_trend = weekly_close > weekly_sma
+        weekly_trend = close.iloc[-1] > weekly_sma
         conditions = [
             above_sma20, above_sma50,
             above_sma200, golden_cross, weekly_trend
@@ -132,7 +132,9 @@ def score_fundamentals(fundamentals):
             elif pe <= 5:
                 score += 1
         rev_growth = fundamentals.get("Revenue Growth", "N/A")
-        if rev_growth != "N/A" and isinstance(rev_growth, (int, float)):
+        if rev_growth != "N/A" and isinstance(
+            rev_growth, (int, float)
+        ):
             if rev_growth > 0.15:
                 score += 3
             elif rev_growth > 0.05:
@@ -149,7 +151,8 @@ def score_fundamentals(fundamentals):
         pass
     return min(8, score)
 
-def score_sentiment(sentiment, confidence, trend, sentiment_score):
+def score_sentiment(sentiment, confidence, trend,
+                    sentiment_score):
     try:
         if sentiment == "positive":
             base = min(6, int(confidence * 8))
@@ -204,11 +207,241 @@ def score_institutional(ticker, df):
     except Exception:
         return 2
 
+def get_risk_level(score, regime, rsi, vol_ratio,
+                   earnings_risk, confidence,
+                   entry, stop_loss, atr_pct):
+    risk_score = 0
+
+    if entry > 0 and stop_loss > 0:
+        stop_distance = abs(entry - stop_loss) / entry
+        if stop_distance > 0.05:
+            risk_score += 4
+        elif stop_distance > 0.035:
+            risk_score += 3
+        elif stop_distance > 0.02:
+            risk_score += 2
+        elif stop_distance > 0.01:
+            risk_score += 1
+
+    if regime == "bear":
+        risk_score += 2
+    elif regime == "sideways":
+        risk_score += 1
+
+    if rsi > 65:
+        risk_score += 2
+    elif rsi > 58:
+        risk_score += 1
+
+    if atr_pct > 0.03:
+        risk_score += 2
+    elif atr_pct > 0.02:
+        risk_score += 1
+
+    if earnings_risk == "medium":
+        risk_score += 2
+
+    if confidence < 0.65:
+        risk_score += 2
+    elif confidence < 0.75:
+        risk_score += 1
+
+    if vol_ratio < 0.8:
+        risk_score += 1
+
+    if risk_score >= 7:
+        return "HIGH"
+    elif risk_score >= 4:
+        return "MEDIUM"
+    else:
+        return "LOW"
+
+def get_signal_breakdown(df, signal, regime, rs,
+                         sentiment, sentiment_trend):
+    try:
+        rsi = float(df["RSI"].iloc[-1])
+        macd = float(df["MACD"].iloc[-1])
+        macd_hist = float(df["MACD_hist"].iloc[-1])
+        price = float(df["Close"].iloc[-1])
+        sma20 = float(df["SMA_20"].iloc[-1])
+        sma50 = float(df["SMA_50"].iloc[-1])
+        sma200 = float(df["SMA_200"].iloc[-1])
+        vol_ratio = float(df["Volume_ratio"].iloc[-1])
+
+        breakdown = [
+            {
+                "Factor": "RSI",
+                "Reading": f"{rsi:.1f}",
+                "Status": (
+                    "Overbought" if rsi > 70
+                    else "Oversold" if rsi < 30
+                    else "Neutral"
+                ),
+                "Signal": (
+                    "🟢" if 40 <= rsi <= 65
+                    else "🔴" if rsi > 70
+                    else "🟡"
+                )
+            },
+            {
+                "Factor": "MACD",
+                "Reading": f"{macd:.2f}",
+                "Status": (
+                    "Bullish crossover"
+                    if macd > 0 and macd_hist > 0
+                    else "Bearish / weak"
+                ),
+                "Signal": (
+                    "🟢" if macd > 0 and macd_hist > 0
+                    else "🔴" if macd < 0
+                    else "🟡"
+                )
+            },
+            {
+                "Factor": "Trend (SMA)",
+                "Reading": (
+                    "Above SMA20/50/200"
+                    if price > sma200
+                    else "Below SMA200"
+                ),
+                "Status": (
+                    "Uptrend confirmed"
+                    if price > sma50
+                    else "Below key average"
+                ),
+                "Signal": (
+                    "🟢" if price > sma50 and price > sma200
+                    else "🔴" if price < sma50
+                    else "🟡"
+                )
+            },
+            {
+                "Factor": "Volume",
+                "Reading": f"{vol_ratio:.1f}x avg",
+                "Status": (
+                    "Confirming move"
+                    if vol_ratio >= 1.2
+                    else "Below average"
+                ),
+                "Signal": (
+                    "🟢" if vol_ratio >= 1.4
+                    else "🟡" if vol_ratio >= 1.0
+                    else "🔴"
+                )
+            },
+            {
+                "Factor": "Market regime",
+                "Reading": regime.upper(),
+                "Status": (
+                    "Favourable" if regime == "bull"
+                    else "Headwind" if regime == "bear"
+                    else "Neutral"
+                ),
+                "Signal": (
+                    "🟢" if regime == "bull"
+                    else "🔴" if regime == "bear"
+                    else "🟡"
+                )
+            },
+            {
+                "Factor": "Rel. strength",
+                "Reading": (
+                    f"{rs:+.1f}% vs Nifty"
+                    if rs else "N/A"
+                ),
+                "Status": (
+                    "Outperforming"
+                    if rs is not None and rs >= 0
+                    else "Underperforming"
+                ),
+                "Signal": (
+                    "🟢" if rs and rs >= 3
+                    else "🔴" if rs and rs < -3
+                    else "🟡"
+                )
+            },
+            {
+                "Factor": "Sentiment",
+                "Reading": sentiment.capitalize(),
+                "Status": (
+                    f"Positive & {sentiment_trend}"
+                    if sentiment == "positive"
+                    else f"Negative / {sentiment_trend}"
+                ),
+                "Signal": (
+                    "🟢" if sentiment == "positive"
+                    else "🔴" if sentiment == "negative"
+                    else "🟡"
+                )
+            },
+        ]
+        return breakdown
+    except Exception:
+        return []
+
+def get_key_drivers(df, signal, regime, rs,
+                    sentiment, confidence):
+    drivers = []
+    try:
+        rsi = float(df["RSI"].iloc[-1])
+        macd = float(df["MACD"].iloc[-1])
+        macd_hist = float(df["MACD_hist"].iloc[-1])
+        vol_ratio = float(df["Volume_ratio"].iloc[-1])
+        price = float(df["Close"].iloc[-1])
+        sma50 = float(df["SMA_50"].iloc[-1])
+        sma200 = float(df["SMA_200"].iloc[-1])
+
+        if confidence >= 0.80:
+            drivers.append(
+                f"High-conviction signal at "
+                f"{confidence:.0%} model confidence"
+            )
+        if macd > 0 and macd_hist > 0:
+            drivers.append(
+                "MACD bullish crossover with "
+                "positive histogram"
+            )
+        if vol_ratio >= 1.4:
+            drivers.append(
+                f"Volume {vol_ratio:.1f}x above average "
+                f"— institutional confirmation"
+            )
+        if price > sma50 and price > sma200:
+            drivers.append(
+                "Price above SMA50 and SMA200 "
+                "— strong structural uptrend"
+            )
+        if rs and rs >= 5:
+            drivers.append(
+                f"Outperforming Nifty 50 by "
+                f"{rs:.1f}% — relative strength leader"
+            )
+        if sentiment == "positive":
+            drivers.append(
+                "News sentiment positive — "
+                "news flow aligned with signal"
+            )
+        if 40 <= rsi <= 55:
+            drivers.append(
+                f"RSI at {rsi:.0f} — not overbought, "
+                f"room to run"
+            )
+        if regime == "bull":
+            drivers.append(
+                "Bull market regime — "
+                "macro tailwind supporting longs"
+            )
+    except Exception:
+        pass
+    return drivers[:3]
+
 def calculate_entry_targets(df, signal):
     try:
         current_price = float(df["Close"].iloc[-1])
         atr = float(df["ATR"].iloc[-1])
-        support_levels, resistance_levels = get_support_resistance(df)
+        support_levels, resistance_levels = (
+            get_support_resistance(df)
+        )
         if signal == "BUY":
             entry = current_price
             stop_loss = (
@@ -218,10 +451,22 @@ def calculate_entry_targets(df, signal):
                 else entry - 2 * atr
             )
             risk = max(entry - stop_loss, atr)
-            valid_t1 = [r for r in resistance_levels if r > entry + risk]
-            valid_t2 = [r for r in resistance_levels if r > entry + risk * 2]
-            target1 = valid_t1[0] if valid_t1 else entry + 2 * risk
-            target2 = valid_t2[0] if valid_t2 else entry + 3 * risk
+            valid_t1 = [
+                r for r in resistance_levels
+                if r > entry + risk
+            ]
+            valid_t2 = [
+                r for r in resistance_levels
+                if r > entry + risk * 2
+            ]
+            target1 = (
+                valid_t1[0] if valid_t1
+                else entry + 2 * risk
+            )
+            target2 = (
+                valid_t2[0] if valid_t2
+                else entry + 3 * risk
+            )
             rr1 = round((target1 - entry) / risk, 2)
             rr2 = round((target2 - entry) / risk, 2)
         else:
@@ -233,10 +478,22 @@ def calculate_entry_targets(df, signal):
                 else entry + 2 * atr
             )
             risk = max(stop_loss - entry, atr)
-            valid_t1 = [s for s in support_levels if s < entry - risk]
-            valid_t2 = [s for s in support_levels if s < entry - risk * 2]
-            target1 = valid_t1[0] if valid_t1 else entry - 2 * risk
-            target2 = valid_t2[0] if valid_t2 else entry - 3 * risk
+            valid_t1 = [
+                s for s in support_levels
+                if s < entry - risk
+            ]
+            valid_t2 = [
+                s for s in support_levels
+                if s < entry - risk * 2
+            ]
+            target1 = (
+                valid_t1[0] if valid_t1
+                else entry - 2 * risk
+            )
+            target2 = (
+                valid_t2[0] if valid_t2
+                else entry - 3 * risk
+            )
             rr1 = round((entry - target1) / risk, 2)
             rr2 = round((entry - target2) / risk, 2)
         return {
@@ -252,7 +509,8 @@ def calculate_entry_targets(df, signal):
         price = float(df["Close"].iloc[-1])
         atr = (
             float(df["ATR"].iloc[-1])
-            if "ATR" in df.columns else price * 0.02
+            if "ATR" in df.columns
+            else price * 0.02
         )
         return {
             "entry": round(price, 2),
@@ -264,7 +522,8 @@ def calculate_entry_targets(df, signal):
             "risk_amount": round(2 * atr, 2)
         }
 
-def calculate_position_size(capital, risk_pct, entry, stop_loss):
+def calculate_position_size(capital, risk_pct,
+                             entry, stop_loss):
     try:
         risk_amount = capital * (risk_pct / 100)
         per_share_risk = abs(entry - stop_loss)
@@ -319,16 +578,20 @@ def run_full_scan(tickers, capital=50000, risk_pct=1.5,
             if risk_flags:
                 continue
 
-            earnings_status = get_earnings_status(ticker, earnings_map)
+            earnings_status = get_earnings_status(
+                ticker, earnings_map
+            )
             if earnings_status["risk_level"] == "high":
                 continue
 
-            model, scaler, features, accuracy = train_model_fast(ticker)
+            model, scaler, features, accuracy = (
+                train_model_fast(ticker)
+            )
             if model is None:
                 continue
 
-            signal, confidence, buy_prob, sell_prob = get_signal(
-                model, scaler, df, features
+            signal, confidence, buy_prob, sell_prob = (
+                get_signal(model, scaler, df, features)
             )
 
             if signal != "BUY" or confidence < 0.60:
@@ -357,7 +620,9 @@ def run_full_scan(tickers, capital=50000, risk_pct=1.5,
                 s6 + s7 + s8 + s9 + s10
             )
 
-            min_threshold = 45 if regime in ["bear", "unknown"] else 55
+            min_threshold = (
+                45 if regime in ["bear", "unknown"] else 55
+            )
             if total_score < min_threshold:
                 continue
 
@@ -368,12 +633,49 @@ def run_full_scan(tickers, capital=50000, risk_pct=1.5,
             )
             risk_metrics = get_risk_metrics(df)
 
+            atr_pct = (
+                float(df["ATR"].iloc[-1]) /
+                float(df["Close"].iloc[-1])
+            )
+            vol_ratio = float(df["Volume_ratio"].iloc[-1])
+
+            holding_days = predict_holding_days(
+                df, signal, confidence, regime, rs
+            )
+
+            risk_level = get_risk_level(
+                total_score, regime, rsi, vol_ratio,
+                earnings_status["risk_level"],
+                confidence,
+                targets["entry"],
+                targets["stop_loss"],
+                atr_pct
+            )
+
+            signal_breakdown = get_signal_breakdown(
+                df, signal, regime, rs,
+                sentiment, sentiment_trend
+            )
+
+            key_drivers = get_key_drivers(
+                df, signal, regime, rs,
+                sentiment, confidence
+            )
+
             capital_note = ""
             if shares == 0:
-                min_capital = targets["risk_amount"] * (100 / risk_pct)
+                min_capital = (
+                    targets["risk_amount"] * (100 / risk_pct)
+                )
                 capital_note = (
                     f"Min capital needed: ₹{min_capital:,.0f}"
                 )
+
+            max_loss = round(
+                targets["risk_amount"] * shares
+                if shares > 0
+                else targets["risk_amount"], 2
+            )
 
             results.append({
                 "ticker": ticker,
@@ -383,9 +685,13 @@ def run_full_scan(tickers, capital=50000, risk_pct=1.5,
                 "confidence": round(confidence, 4),
                 "buy_prob": round(buy_prob, 4),
                 "accuracy": round(accuracy, 4),
-                "price": round(float(df["Close"].iloc[-1]), 2),
+                "price": round(
+                    float(df["Close"].iloc[-1]), 2
+                ),
                 "rsi": round(float(rsi), 1),
-                "macd": round(float(df["MACD"].iloc[-1]), 2),
+                "macd": round(
+                    float(df["MACD"].iloc[-1]), 2
+                ),
                 "entry": targets["entry"],
                 "stop_loss": targets["stop_loss"],
                 "target1": targets["target1"],
@@ -396,9 +702,20 @@ def run_full_scan(tickers, capital=50000, risk_pct=1.5,
                 "shares": shares,
                 "position_cost": cost,
                 "capital_note": capital_note,
-                "earnings_message": earnings_status["message"],
-                "earnings_days": earnings_status["days_to_earnings"],
-                "earnings_risk": earnings_status["risk_level"],
+                "max_loss": max_loss,
+                "holding_days": holding_days,
+                "risk_level": risk_level,
+                "signal_breakdown": signal_breakdown,
+                "key_drivers": key_drivers,
+                "earnings_message": (
+                    earnings_status["message"]
+                ),
+                "earnings_days": (
+                    earnings_status["days_to_earnings"]
+                ),
+                "earnings_risk": (
+                    earnings_status["risk_level"]
+                ),
                 "sentiment": sentiment,
                 "sent_conf": round(sent_conf, 4),
                 "sentiment_score": sentiment_score,

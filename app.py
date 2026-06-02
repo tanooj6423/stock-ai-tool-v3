@@ -24,6 +24,9 @@ from trade_instructions import (get_entry_instruction,
 from journal import render_journal_tab, add_trade, load_journal
 from watchlist import (render_watchlist_tab, add_to_watchlist,
                        load_watchlist)
+from broker import (render_zerodha_panel, get_live_quote,
+                    is_connected, is_market_hours,
+                    place_gtt_order)
 
 load_dotenv()
 
@@ -114,110 +117,76 @@ def hex_to_rgba(hex_color, alpha=0.1):
 st.markdown(f"""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
-
-html, body, [class*="css"] {{
-    font-family: 'Inter', sans-serif !important;
-}}
+html, body, [class*="css"] {{ font-family: 'Inter', sans-serif !important; }}
 .stApp {{ background-color: {t['bg']}; }}
 section[data-testid="stSidebar"] {{
     background-color: {t['bg2']};
     border-right: 1px solid {t['border']};
 }}
-section[data-testid="stSidebar"] * {{
-    color: {t['text']} !important;
-}}
-.block-container {{
-    padding-top: 24px;
-    padding-bottom: 48px;
-}}
+section[data-testid="stSidebar"] * {{ color: {t['text']} !important; }}
+.block-container {{ padding-top: 24px; padding-bottom: 48px; }}
 .app-header {{
     padding-bottom: 20px;
     margin-bottom: 8px;
     border-bottom: 1px solid {t['border']};
 }}
 .app-name {{
-    font-size: 15px;
-    font-weight: 700;
-    color: {t['accent']};
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    margin: 0 0 4px 0;
+    font-size: 15px; font-weight: 700;
+    color: {t['accent']}; letter-spacing: 2px;
+    text-transform: uppercase; margin: 0 0 4px 0;
 }}
-.app-tagline {{
-    font-size: 12px;
-    color: {t['text2']};
-    letter-spacing: 0.3px;
-}}
+.app-tagline {{ font-size: 12px; color: {t['text2']}; }}
 .section-label {{
-    font-size: 10px;
-    font-weight: 700;
-    color: {t['text2']};
-    text-transform: uppercase;
-    letter-spacing: 2px;
-    margin: 28px 0 12px 0;
+    font-size: 10px; font-weight: 700;
+    color: {t['text2']}; text-transform: uppercase;
+    letter-spacing: 2px; margin: 28px 0 12px 0;
 }}
 .badge-buy {{
-    font-size: 11px;
-    font-weight: 700;
+    font-size: 11px; font-weight: 700;
     color: {t['green']};
     background: rgba({t['green_rgb']},0.12);
     border: 1px solid rgba({t['green_rgb']},0.3);
-    padding: 2px 10px;
-    border-radius: 4px;
+    padding: 2px 10px; border-radius: 4px;
     letter-spacing: 1px;
 }}
 .badge-sell {{
-    font-size: 11px;
-    font-weight: 700;
+    font-size: 11px; font-weight: 700;
     color: {t['red']};
     background: rgba({t['red_rgb']},0.12);
     border: 1px solid rgba({t['red_rgb']},0.3);
-    padding: 2px 10px;
-    border-radius: 4px;
+    padding: 2px 10px; border-radius: 4px;
     letter-spacing: 1px;
 }}
 .badge-score {{
-    font-size: 11px;
-    font-weight: 600;
+    font-size: 11px; font-weight: 600;
     color: {t['accent']};
     background: rgba({t['accent_rgb']},0.1);
     border: 1px solid rgba({t['accent_rgb']},0.25);
-    padding: 2px 10px;
-    border-radius: 4px;
+    padding: 2px 10px; border-radius: 4px;
     font-family: 'JetBrains Mono', monospace;
 }}
 .pick-meta {{ font-size: 12px; color: {t['text2']}; }}
 .score-track {{
-    height: 2px;
-    background: {t['border']};
-    border-radius: 2px;
-    margin: 10px 0 16px 0;
+    height: 2px; background: {t['border']};
+    border-radius: 2px; margin: 10px 0 16px 0;
     overflow: hidden;
 }}
 .score-fill {{
-    height: 2px;
-    border-radius: 2px;
-    background: linear-gradient(
-        90deg, {t['accent']}, {t['green']}
-    );
+    height: 2px; border-radius: 2px;
+    background: linear-gradient(90deg, {t['accent']}, {t['green']});
 }}
 .level-label {{
-    font-size: 10px;
-    color: {t['text2']};
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-    margin: 20px 0 8px 0;
-    padding-bottom: 6px;
+    font-size: 10px; color: {t['text2']};
+    text-transform: uppercase; letter-spacing: 1.5px;
+    margin: 20px 0 8px 0; padding-bottom: 6px;
     border-bottom: 1px solid {t['border']};
 }}
 .thesis-box {{
     background: rgba({t['accent_rgb']},0.06);
     border-left: 2px solid {t['accent']};
     border-radius: 0 6px 6px 0;
-    padding: 14px 16px;
-    font-size: 13px;
-    color: {t['text']};
-    line-height: 1.75;
+    padding: 14px 16px; font-size: 13px;
+    color: {t['text']}; line-height: 1.75;
     margin-top: 8px;
 }}
 .instruction-box {{
@@ -225,19 +194,15 @@ section[data-testid="stSidebar"] * {{
     border: 1px solid rgba({t['green_rgb']},0.25);
     border-left: 3px solid {t['green']};
     border-radius: 0 8px 8px 0;
-    padding: 16px 18px;
-    font-size: 13px;
-    color: {t['text']};
-    line-height: 1.85;
+    padding: 16px 18px; font-size: 13px;
+    color: {t['text']}; line-height: 1.85;
     margin: 8px 0;
 }}
 .instruction-summary {{
     background: rgba({t['accent_rgb']},0.08);
     border: 1px solid rgba({t['accent_rgb']},0.2);
-    border-radius: 6px;
-    padding: 10px 14px;
-    font-size: 12px;
-    font-weight: 600;
+    border-radius: 6px; padding: 10px 14px;
+    font-size: 12px; font-weight: 600;
     color: {t['accent']};
     font-family: 'JetBrains Mono', monospace;
     margin-bottom: 10px;
@@ -245,48 +210,35 @@ section[data-testid="stSidebar"] * {{
 .validity-valid {{
     background: rgba({t['green_rgb']},0.1);
     border: 1px solid rgba({t['green_rgb']},0.3);
-    border-radius: 6px;
-    padding: 10px 14px;
-    font-size: 13px;
-    color: {t['green']};
+    border-radius: 6px; padding: 10px 14px;
+    font-size: 13px; color: {t['green']};
 }}
 .validity-invalid {{
     background: rgba({t['red_rgb']},0.1);
     border: 1px solid rgba({t['red_rgb']},0.3);
-    border-radius: 6px;
-    padding: 10px 14px;
-    font-size: 13px;
-    color: {t['red']};
+    border-radius: 6px; padding: 10px 14px;
+    font-size: 13px; color: {t['red']};
 }}
 .validity-watch {{
     background: rgba(79,172,254,0.1);
     border: 1px solid rgba(79,172,254,0.3);
-    border-radius: 6px;
-    padding: 10px 14px;
-    font-size: 13px;
-    color: {t['blue']};
+    border-radius: 6px; padding: 10px 14px;
+    font-size: 13px; color: {t['blue']};
 }}
 .driver-item {{
-    display: flex;
-    gap: 8px;
+    display: flex; gap: 8px;
     align-items: flex-start;
-    padding: 5px 0;
-    font-size: 13px;
+    padding: 5px 0; font-size: 13px;
     color: {t['text']};
 }}
 .breakdown-table {{
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 12px;
-    margin: 8px 0;
+    width: 100%; border-collapse: collapse;
+    font-size: 12px; margin: 8px 0;
 }}
 .breakdown-table th {{
-    text-align: left;
-    padding: 6px 10px;
-    color: {t['text2']};
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 1px;
+    text-align: left; padding: 6px 10px;
+    color: {t['text2']}; font-size: 10px;
+    text-transform: uppercase; letter-spacing: 1px;
     border-bottom: 1px solid {t['border']};
 }}
 .breakdown-table td {{
@@ -295,64 +247,45 @@ section[data-testid="stSidebar"] * {{
     color: {t['text']};
 }}
 .status-row {{
-    display: flex;
-    gap: 20px;
-    align-items: center;
+    display: flex; gap: 20px; align-items: center;
     background: {t['card']};
     border: 1px solid {t['border']};
-    border-radius: 6px;
-    padding: 10px 16px;
-    margin-bottom: 20px;
-    font-size: 12px;
+    border-radius: 6px; padding: 10px 16px;
+    margin-bottom: 20px; font-size: 12px;
     flex-wrap: wrap;
 }}
 .status-item {{ color: {t['text2']}; }}
 .status-value {{
-    color: {t['text']};
-    font-weight: 600;
+    color: {t['text']}; font-weight: 600;
     font-family: 'JetBrains Mono', monospace;
 }}
 .regime-bull {{ color: {t['green']}; font-weight: 700; }}
 .regime-bear {{ color: {t['red']}; font-weight: 700; }}
-.regime-sideways {{
-    color: {t['gold']}; font-weight: 700;
-}}
-.regime-unknown {{
-    color: {t['text2']}; font-weight: 700;
-}}
-.divider {{
-    height: 1px;
-    background: {t['border']};
-    margin: 24px 0;
-}}
+.regime-sideways {{ color: {t['gold']}; font-weight: 700; }}
+.regime-unknown {{ color: {t['text2']}; font-weight: 700; }}
+.divider {{ height: 1px; background: {t['border']}; margin: 24px 0; }}
 .sentiment-grid {{
     display: grid;
     grid-template-columns: repeat(6, 1fr);
-    gap: 8px;
-    margin-bottom: 12px;
+    gap: 8px; margin-bottom: 12px;
 }}
 .sentiment-cell {{
     background: {t['bg2']};
     border: 1px solid {t['border']};
-    border-radius: 6px;
-    padding: 10px 12px;
+    border-radius: 6px; padding: 10px 12px;
 }}
 .sentiment-cell-label {{
-    font-size: 9px;
-    color: {t['text2']};
-    text-transform: uppercase;
-    letter-spacing: 1px;
+    font-size: 9px; color: {t['text2']};
+    text-transform: uppercase; letter-spacing: 1px;
     margin-bottom: 4px;
 }}
 .sentiment-cell-value {{
-    font-size: 16px;
-    font-weight: 600;
+    font-size: 16px; font-weight: 600;
     font-family: 'JetBrains Mono', monospace;
     color: {t['text']};
 }}
 .headline-item {{
-    display: flex;
-    gap: 8px;
+    display: flex; gap: 8px;
     align-items: flex-start;
     padding: 6px 0;
     border-bottom: 1px solid {t['border']};
@@ -362,12 +295,9 @@ section[data-testid="stSidebar"] * {{
 .neg-text {{ color: {t['red']}; }}
 .neu-text {{ color: {t['text2']}; }}
 .keyword-tag {{
-    display: inline-block;
-    font-size: 10px;
+    display: inline-block; font-size: 10px;
     font-family: 'JetBrains Mono', monospace;
-    padding: 2px 7px;
-    border-radius: 3px;
-    margin: 2px;
+    padding: 2px 7px; border-radius: 3px; margin: 2px;
 }}
 .keyword-pos {{
     color: {t['green']};
@@ -394,18 +324,13 @@ section[data-testid="stSidebar"] * {{
 .stTabs [data-baseweb="tab-list"] {{
     background: {t['bg2']};
     border: 1px solid {t['border']};
-    border-radius: 6px;
-    padding: 3px;
-    gap: 2px;
+    border-radius: 6px; padding: 3px; gap: 2px;
 }}
 .stTabs [data-baseweb="tab"] {{
     background: rgba(0,0,0,0);
-    border-radius: 4px;
-    color: {t['text2']};
-    font-size: 12px;
-    font-weight: 500;
-    padding: 6px 14px;
-    letter-spacing: 0.3px;
+    border-radius: 4px; color: {t['text2']};
+    font-size: 12px; font-weight: 500;
+    padding: 6px 14px; letter-spacing: 0.3px;
 }}
 .stTabs [aria-selected="true"] {{
     background: rgba({t['accent_rgb']},0.15) !important;
@@ -443,22 +368,17 @@ section[data-testid="stSidebar"] * {{
     background: {t['border']} !important;
 }}
 .sidebar-brand {{
-    font-size: 13px;
-    font-weight: 700;
-    color: {t['accent']};
-    letter-spacing: 2px;
+    font-size: 13px; font-weight: 700;
+    color: {t['accent']}; letter-spacing: 2px;
     text-transform: uppercase;
     padding: 12px 0 16px 0;
     border-bottom: 1px solid {t['border']};
     margin-bottom: 20px;
 }}
 .sidebar-label {{
-    font-size: 9px;
-    font-weight: 700;
-    color: {t['text2']};
-    text-transform: uppercase;
-    letter-spacing: 2px;
-    margin: 16px 0 8px 0;
+    font-size: 9px; font-weight: 700;
+    color: {t['text2']}; text-transform: uppercase;
+    letter-spacing: 2px; margin: 16px 0 8px 0;
 }}
 </style>
 """, unsafe_allow_html=True)
@@ -474,13 +394,9 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
-    "Daily Picks",
-    "Morning Check",
-    "Stock Analysis",
-    "Price Forecast",
-    "Watchlist",
-    "Journal",
-    "Settings"
+    "Daily Picks", "Morning Check",
+    "Stock Analysis", "Price Forecast",
+    "Watchlist", "Journal", "Settings"
 ])
 
 with tab7:
@@ -525,6 +441,11 @@ with tab7:
          "Full universe (150 stocks)"],
         index=1
     )
+    st.markdown(
+        '<div class="divider"></div>',
+        unsafe_allow_html=True
+    )
+    render_zerodha_panel(t)
 
 with tab1:
     st.sidebar.markdown(
@@ -623,6 +544,10 @@ with tab1:
                 {len(picks)}
             </span>
         </span>
+        <span style="color:{t['border']};">·</span>
+        <span class="status-item">
+            {"🟢 Zerodha connected" if is_connected() else "Zerodha not connected"}
+        </span>
     </div>
     """, unsafe_allow_html=True)
 
@@ -663,12 +588,26 @@ with tab1:
                 pick, capital, risk_pct
             )
 
+            live_price = None
+            if is_connected() and is_market_hours():
+                quote = get_live_quote(pick["ticker"])
+                if quote:
+                    live_price = quote["price"]
+
+            display_price = (
+                live_price if live_price
+                else pick["price"]
+            )
+            price_label = (
+                "🟢 LIVE" if live_price else "Delayed"
+            )
+
             with st.expander(
                 f"#{i+1}  "
                 f"{pick['ticker'].replace('.NS','')}  ·  "
                 f"{signal} {pick['confidence']:.0%}  ·  "
                 f"{score}/100  ·  "
-                f"₹{pick['price']:,.2f}  ·  "
+                f"₹{display_price:,.2f}  ·  "
                 f"Risk: {risk_level}  ·  "
                 f"Hold: {pick.get('holding_days',7)}d",
                 expanded=(i < 3)
@@ -682,13 +621,13 @@ with tab1:
                     f'<span class="badge-score">'
                     f'{score}/100</span>'
                     f'<span style="font-size:11px;'
-                    f'font-weight:700;'
-                    f'color:{risk_color};">'
+                    f'font-weight:700;color:{risk_color};">'
                     f'● {risk_level} RISK</span>'
                     f'<span class="pick-meta">'
                     f'{pick["sector"]} · '
                     f'Conf {pick["confidence"]:.1%} · '
-                    f'Hold {pick.get("holding_days",7)} days'
+                    f'Hold {pick.get("holding_days",7)}d · '
+                    f'{price_label}'
                     f'</span></div>'
                     f'<div class="score-track">'
                     f'<div class="score-fill" '
@@ -703,7 +642,6 @@ with tab1:
                             f"⚠️ {pick['earnings_message']}"
                         )
 
-                # Key drivers
                 drivers = pick.get("key_drivers", [])
                 if drivers:
                     st.markdown(
@@ -713,8 +651,9 @@ with tab1:
                     )
                     drivers_html = "".join([
                         f'<div class="driver-item">'
-                        f'<span style="color:{t["accent"]};">'
-                        f'→</span> {d}</div>'
+                        f'<span style="color:'
+                        f'{t["accent"]};">→</span> '
+                        f'{d}</div>'
                         for d in drivers
                     ])
                     st.markdown(
@@ -722,7 +661,6 @@ with tab1:
                         unsafe_allow_html=True
                     )
 
-                # Trade instruction
                 st.markdown(
                     '<div class="level-label">'
                     'Trade instruction</div>',
@@ -739,30 +677,19 @@ with tab1:
                     unsafe_allow_html=True
                 )
 
-                # Trade levels
                 st.markdown(
                     '<div class="level-label">'
                     'Trade levels</div>',
                     unsafe_allow_html=True
                 )
-                c1, c2, c3, c4, c5, c6, c7 = (
-                    st.columns(7)
-                )
-                c1.metric(
-                    "Entry", f"₹{pick['entry']:,.2f}"
-                )
-                c2.metric(
-                    "Stop loss",
-                    f"₹{pick['stop_loss']:,.2f}"
-                )
-                c3.metric(
-                    "Target 1",
-                    f"₹{pick['target1']:,.2f}"
-                )
-                c4.metric(
-                    "Target 2",
-                    f"₹{pick['target2']:,.2f}"
-                )
+                c1, c2, c3, c4, c5, c6, c7 = st.columns(7)
+                c1.metric("Entry", f"₹{pick['entry']:,.2f}")
+                c2.metric("Stop loss",
+                          f"₹{pick['stop_loss']:,.2f}")
+                c3.metric("Target 1",
+                          f"₹{pick['target1']:,.2f}")
+                c4.metric("Target 2",
+                          f"₹{pick['target2']:,.2f}")
                 c5.metric("R/R", f"1:{pick['rr1']:.1f}")
                 c6.metric(
                     "Shares",
@@ -773,12 +700,9 @@ with tab1:
                     pick.get("risk_amount", 0) *
                     pick.get("shares", 1)
                 )
-                c7.metric(
-                    "Max loss",
-                    f"₹{max_loss_val:,.2f}"
-                )
+                c7.metric("Max loss",
+                          f"₹{max_loss_val:,.2f}")
 
-                # Signal breakdown table
                 st.markdown(
                     '<div class="level-label">'
                     'Signal breakdown</div>',
@@ -810,7 +734,6 @@ with tab1:
                         unsafe_allow_html=True
                     )
 
-                # Score breakdown numbers
                 st.markdown(
                     '<div class="level-label">'
                     'Composite score</div>',
@@ -823,7 +746,6 @@ with tab1:
                 ):
                     cols[j].metric(layer, pts)
 
-                # AI thesis
                 st.markdown(
                     '<div class="level-label">'
                     'AI trade thesis</div>',
@@ -853,7 +775,6 @@ with tab1:
                     unsafe_allow_html=True
                 )
 
-                # Action buttons
                 st.markdown(
                     '<div class="level-label">'
                     'Actions</div>',
@@ -873,7 +794,7 @@ with tab1:
                             target1=pick["target1"],
                             target2=pick["target2"],
                             shares=pick["shares"],
-                            capital_at_risk=pick["max_loss"],
+                            capital_at_risk=max_loss_val,
                             holding_days=pick.get(
                                 "holding_days", 7
                             ),
@@ -893,6 +814,23 @@ with tab1:
                             notes=f"Score {pick['score']}"
                         )
                         st.success("Added to watchlist!")
+                with ab3:
+                    if is_connected():
+                        if st.button(
+                            "⚡ Place GTT orders",
+                            key=f"gtt_{pick['ticker']}"
+                        ):
+                            result, msg = place_gtt_order(
+                                pick["ticker"],
+                                pick["entry"],
+                                pick["stop_loss"],
+                                pick["target1"],
+                                pick["shares"]
+                            )
+                            if result:
+                                st.success(msg)
+                            else:
+                                st.error(msg)
 
 with tab2:
     st.markdown(
@@ -903,9 +841,10 @@ with tab2:
     st.markdown(
         f'<div style="font-size:13px;'
         f'color:{t["text2"]};margin-bottom:16px;">'
-        f'Run this after 9:30am to check if yesterday\'s '
-        f'picks are still valid given today\'s opening '
-        f'price.</div>',
+        f'Run this after 9:30am to check if picks '
+        f'are still valid given today\'s price. '
+        f'{"Live prices via Zerodha." if is_connected() and is_market_hours() else "Using delayed prices."}'
+        f'</div>',
         unsafe_allow_html=True
     )
 
@@ -925,14 +864,22 @@ with tab2:
             )
             for pick in picks:
                 try:
-                    live = yf.Ticker(
-                        pick["ticker"]
-                    ).history(period="1d")
-                    if live is None or live.empty:
-                        continue
-                    current_price = float(
-                        live["Close"].iloc[-1]
+                    live_quote = (
+                        get_live_quote(pick["ticker"])
+                        if is_connected() and is_market_hours()
+                        else None
                     )
+                    if live_quote:
+                        current_price = live_quote["price"]
+                    else:
+                        live = yf.Ticker(
+                            pick["ticker"]
+                        ).history(period="1d")
+                        if live is None or live.empty:
+                            continue
+                        current_price = float(
+                            live["Close"].iloc[-1]
+                        )
                     validity = check_entry_validity(
                         pick, current_price
                     )
@@ -971,8 +918,7 @@ with tab2:
     with st.form("manual_check"):
         mc1, mc2, mc3, mc4 = st.columns(4)
         check_ticker = mc1.text_input(
-            "NSE symbol",
-            placeholder="e.g. NTPC"
+            "NSE symbol", placeholder="e.g. NTPC"
         )
         check_entry = mc2.number_input(
             "Your entry price",
@@ -988,12 +934,20 @@ with tab2:
                     ticker_str = check_ticker.upper()
                     if not ticker_str.endswith(".NS"):
                         ticker_str += ".NS"
-                    live = yf.Ticker(
-                        ticker_str
-                    ).history(period="1d")
-                    current_price = float(
-                        live["Close"].iloc[-1]
+                    live_quote = (
+                        get_live_quote(ticker_str)
+                        if is_connected() and is_market_hours()
+                        else None
                     )
+                    if live_quote:
+                        current_price = live_quote["price"]
+                    else:
+                        live = yf.Ticker(
+                            ticker_str
+                        ).history(period="1d")
+                        current_price = float(
+                            live["Close"].iloc[-1]
+                        )
                     mock_pick = {
                         "entry": check_entry,
                         "stop_loss": check_stop,
@@ -1075,7 +1029,16 @@ with tab3:
     if df is None or df.empty:
         st.error("Could not load data.")
     else:
-        price = float(df["Close"].iloc[-1])
+        live_quote = (
+            get_live_quote(ticker)
+            if is_connected() and is_market_hours()
+            else None
+        )
+        price = (
+            live_quote["price"]
+            if live_quote
+            else float(df["Close"].iloc[-1])
+        )
         prev = float(df["Close"].iloc[-2])
         change = ((price - prev) / prev) * 100
         sector = get_sector(ticker)
@@ -1083,6 +1046,10 @@ with tab3:
             t["green"] if change >= 0 else t["red"]
         )
         arrow = "▲" if change >= 0 else "▼"
+        live_label = (
+            " · 🟢 LIVE"
+            if live_quote else " · Delayed"
+        )
 
         st.markdown(f"""
         <div style="margin-bottom:20px;">
@@ -1111,6 +1078,7 @@ with tab3:
                 <span class="regime-{regime}">
                     {regime.upper()}
                 </span>
+                {live_label}
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -1156,18 +1124,15 @@ with tab3:
             )
         ))
         fig.add_trace(go.Scatter(
-            x=df.index, y=df["SMA_20"],
-            name="SMA 20",
+            x=df.index, y=df["SMA_20"], name="SMA 20",
             line=dict(color="#b8860b", width=1)
         ))
         fig.add_trace(go.Scatter(
-            x=df.index, y=df["SMA_50"],
-            name="SMA 50",
+            x=df.index, y=df["SMA_50"], name="SMA 50",
             line=dict(color=t["blue"], width=1)
         ))
         fig.add_trace(go.Scatter(
-            x=df.index, y=df["SMA_200"],
-            name="SMA 200",
+            x=df.index, y=df["SMA_200"], name="SMA 200",
             line=dict(color="#9b59b6", width=1)
         ))
         fig.add_trace(go.Scatter(
@@ -1240,8 +1205,7 @@ with tab3:
             legend=dict(
                 bgcolor=t["bg2"],
                 bordercolor=t["border"],
-                borderwidth=1,
-                font=dict(size=11)
+                borderwidth=1, font=dict(size=11)
             ),
             margin=dict(l=0, r=80, t=36, b=0)
         )
@@ -1338,8 +1302,7 @@ with tab3:
                 legend=dict(
                     bgcolor=t["bg2"],
                     bordercolor=t["border"],
-                    borderwidth=1,
-                    font=dict(size=10)
+                    borderwidth=1, font=dict(size=10)
                 ),
                 margin=dict(l=0, r=0, t=32, b=0)
             )
@@ -1523,33 +1486,26 @@ with tab3:
         <div class="sentiment-grid">
             <div class="sentiment-cell">
                 <div class="sentiment-cell-label">
-                    Sentiment
-                </div>
+                    Sentiment</div>
                 <div class="sentiment-cell-value"
                 style="color:{sent_color};">
-                    {sentiment.capitalize()}
-                </div>
+                    {sentiment.capitalize()}</div>
             </div>
             <div class="sentiment-cell">
                 <div class="sentiment-cell-label">
-                    Score
-                </div>
+                    Score</div>
                 <div class="sentiment-cell-value">
-                    {sentiment_score:+.2f}
-                </div>
+                    {sentiment_score:+.2f}</div>
             </div>
             <div class="sentiment-cell">
                 <div class="sentiment-cell-label">
-                    Trend
-                </div>
+                    Trend</div>
                 <div class="sentiment-cell-value">
-                    {trend_arrow} {trend.capitalize()}
-                </div>
+                    {trend_arrow} {trend.capitalize()}</div>
             </div>
             <div class="sentiment-cell">
                 <div class="sentiment-cell-label">
-                    Positive
-                </div>
+                    Positive</div>
                 <div class="sentiment-cell-value"
                 style="color:{t['green']};">
                     {distribution.get('positive',0):.1%}
@@ -1557,8 +1513,7 @@ with tab3:
             </div>
             <div class="sentiment-cell">
                 <div class="sentiment-cell-label">
-                    Negative
-                </div>
+                    Negative</div>
                 <div class="sentiment-cell-value"
                 style="color:{t['red']};">
                     {distribution.get('negative',0):.1%}
@@ -1566,11 +1521,9 @@ with tab3:
             </div>
             <div class="sentiment-cell">
                 <div class="sentiment-cell-label">
-                    Headlines
-                </div>
+                    Headlines</div>
                 <div class="sentiment-cell-value">
-                    {headline_count}
-                </div>
+                    {headline_count}</div>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -1584,14 +1537,12 @@ with tab3:
         if pos_kw:
             kw_html += "".join([
                 f'<span class="keyword-tag keyword-pos">'
-                f'{k}</span>'
-                for k in pos_kw
+                f'{k}</span>' for k in pos_kw
             ])
         if neg_kw:
             kw_html += "".join([
                 f'<span class="keyword-tag keyword-neg">'
-                f'{k}</span>'
-                for k in neg_kw
+                f'{k}</span>' for k in neg_kw
             ])
         if kw_html:
             st.markdown(
@@ -1704,8 +1655,7 @@ with tab4:
                     line=dict(color=t["text2"], width=1.5)
                 ))
                 fig_f.add_trace(go.Scatter(
-                    x=forecast["ds"],
-                    y=forecast["yhat"],
+                    x=forecast["ds"], y=forecast["yhat"],
                     name="Forecast",
                     line=dict(color=t["accent"], width=2)
                 ))
@@ -1727,8 +1677,10 @@ with tab4:
                 ))
                 fig_f.update_layout(
                     title=dict(
-                        text=f"{ticker_f.replace('.NS','')} "
-                             f"· 30-day forecast",
+                        text=(
+                            f"{ticker_f.replace('.NS','')}"
+                            f" · 30-day forecast"
+                        ),
                         font=dict(
                             color=t["text2"], size=12,
                             family="Inter"

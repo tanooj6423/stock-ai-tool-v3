@@ -18,7 +18,11 @@ from sentiment import (get_news_sentiment, NEGATIVE_KEYWORDS,
 from ai_explain import explain_signal, generate_pick_thesis
 from screener_engine import run_full_scan, calculate_position_size
 from universe import ALL_STOCKS, NIFTY_50, COMMODITIES, get_sector
-from earnings import get_earnings_status, get_nse_earnings_calendar
+from earnings import (get_earnings_status,
+                      get_nse_earnings_calendar,
+                      get_nse_fii_dii_flow,
+                      get_dividend_risk,
+                      get_dividend_exdates)
 from trade_instructions import (get_entry_instruction,
                                  check_entry_validity)
 from journal import render_journal_tab, add_trade, load_journal
@@ -548,6 +552,12 @@ with tab1:
         <span class="status-item">
             {"🟢 Zerodha connected" if is_connected() else "Zerodha not connected"}
         </span>
+        <span style="color:{t['border']};">·</span>
+        <span class="status-item">FII &nbsp;
+            <span style="color:{'#c0392b' if picks and picks[0].get('fii_bearish') else '#2d7d5a'};">
+                {"● Selling" if picks and picks[0].get('fii_bearish') else "● Neutral"}
+            </span>
+        </span>
     </div>
     """, unsafe_allow_html=True)
 
@@ -641,6 +651,25 @@ with tab1:
                         st.warning(
                             f"⚠️ {pick['earnings_message']}"
                         )
+
+                if pick.get("div_message"):
+                    st.error(pick["div_message"])
+
+                if pick.get("fii_bearish"):
+                    st.warning(
+                        f"⚠️ FII net sellers for "
+                        f"{pick.get('fii_selling_days', 0)} "
+                        f"consecutive days — position "
+                        f"size halved automatically."
+                    )
+
+                pct_high = pick.get("pct_from_52w_high", 10)
+                if pct_high < 5:
+                    st.warning(
+                        f"⚠️ Only {pct_high:.1f}% below "
+                        f"52W high — strong resistance "
+                        f"overhead. Tight target."
+                    )
 
                 drivers = pick.get("key_drivers", [])
                 if drivers:

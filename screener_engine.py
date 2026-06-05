@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 import streamlit as st
-from data import (get_stock_data, add_indicators, get_weekly_data,
+from data import (get_stock_data, add_indicators,
                   get_fundamentals, get_support_resistance,
                   get_nifty_correlation, get_relative_strength,
                   get_market_regime, get_sector_momentum,
@@ -10,7 +10,16 @@ from model import (train_model_fast, get_signal,
                    get_risk_metrics, predict_holding_days)
 from sentiment import get_news_sentiment
 from universe import get_sector, SECTOR_INDICES, is_commodity
-from earnings import get_earnings_status, get_nse_earnings_calendar
+from earnings import (get_earnings_status,
+                      get_nse_earnings_calendar,
+                      get_dividend_risk,
+                      get_dividend_exdates,
+                      get_nse_fii_dii_flow)
+
+# Minimum daily turnover in crores
+MIN_DAILY_TURNOVER_CR = 50
+# Max picks per sector
+MAX_PICKS_PER_SECTOR = 2
 
 def score_ml_signal(signal, confidence, buy_prob):
     if signal == "BUY":
@@ -106,7 +115,9 @@ def score_sector_momentum(sector, sector_indices):
     try:
         if sector not in sector_indices:
             return 4
-        momentum = get_sector_momentum(sector_indices[sector])
+        momentum = get_sector_momentum(
+            sector_indices[sector]
+        )
         if momentum is None:
             return 4
         if momentum >= 5:
@@ -131,7 +142,9 @@ def score_fundamentals(fundamentals):
                 score += 2
             elif pe <= 5:
                 score += 1
-        rev_growth = fundamentals.get("Revenue Growth", "N/A")
+        rev_growth = fundamentals.get(
+            "Revenue Growth", "N/A"
+        )
         if rev_growth != "N/A" and isinstance(
             rev_growth, (int, float)
         ):
@@ -211,7 +224,6 @@ def get_risk_level(score, regime, rsi, vol_ratio,
                    earnings_risk, confidence,
                    entry, stop_loss, atr_pct):
     risk_score = 0
-
     if entry > 0 and stop_loss > 0:
         stop_distance = abs(entry - stop_loss) / entry
         if stop_distance > 0.05:
@@ -222,33 +234,26 @@ def get_risk_level(score, regime, rsi, vol_ratio,
             risk_score += 2
         elif stop_distance > 0.01:
             risk_score += 1
-
     if regime == "bear":
         risk_score += 2
     elif regime == "sideways":
         risk_score += 1
-
     if rsi > 65:
         risk_score += 2
     elif rsi > 58:
         risk_score += 1
-
     if atr_pct > 0.03:
         risk_score += 2
     elif atr_pct > 0.02:
         risk_score += 1
-
     if earnings_risk == "medium":
         risk_score += 2
-
     if confidence < 0.65:
         risk_score += 2
     elif confidence < 0.75:
         risk_score += 1
-
     if vol_ratio < 0.8:
         risk_score += 1
-
     if risk_score >= 7:
         return "HIGH"
     elif risk_score >= 4:
@@ -267,7 +272,6 @@ def get_signal_breakdown(df, signal, regime, rs,
         sma50 = float(df["SMA_50"].iloc[-1])
         sma200 = float(df["SMA_200"].iloc[-1])
         vol_ratio = float(df["Volume_ratio"].iloc[-1])
-
         breakdown = [
             {
                 "Factor": "RSI",
@@ -300,7 +304,7 @@ def get_signal_breakdown(df, signal, regime, rs,
             {
                 "Factor": "Trend (SMA)",
                 "Reading": (
-                    "Above SMA20/50/200"
+                    "Above all SMAs"
                     if price > sma200
                     else "Below SMA200"
                 ),
@@ -310,7 +314,8 @@ def get_signal_breakdown(df, signal, regime, rs,
                     else "Below key average"
                 ),
                 "Signal": (
-                    "🟢" if price > sma50 and price > sma200
+                    "🟢"
+                    if price > sma50 and price > sma200
                     else "🔴" if price < sma50
                     else "🟡"
                 )
@@ -390,7 +395,6 @@ def get_key_drivers(df, signal, regime, rs,
         price = float(df["Close"].iloc[-1])
         sma50 = float(df["SMA_50"].iloc[-1])
         sma200 = float(df["SMA_200"].iloc[-1])
-
         if confidence >= 0.80:
             drivers.append(
                 f"High-conviction signal at "
@@ -435,20 +439,38 @@ def get_key_drivers(df, signal, regime, rs,
         pass
     return drivers[:3]
 
-def calculate_entry_targets(df, signal):
+def calculate_entry_targets(df, signal, regime):
     try:
         current_price = float(df["Close"].iloc[-1])
         atr = float(df["ATR"].iloc[-1])
+        atr_pct = atr / current_price
+
+        # Wider stops in bear/high volatility
+        if regime == "bear":
+            atr_multiplier = 2.5
+        elif atr_pct > 0.025:
+            atr_multiplier = 3.0
+        else:
+            atr_multiplier = 2.0
+
         support_levels, resistance_levels = (
             get_support_resistance(df)
         )
+
         if signal == "BUY":
             entry = current_price
-            stop_loss = (
+            support_stop = (
                 support_levels[0]
                 if support_levels and
-                (entry - support_levels[0]) > atr * 0.5
-                else entry - 2 * atr
+                (entry - support_levels[0]) >
+                atr * 0.5
+                else None
+            )
+            atr_stop = entry - atr_multiplier * atr
+            stop_loss = (
+                max(support_stop, atr_stop)
+                if support_stop
+                else atr_stop
             )
             risk = max(entry - stop_loss, atr)
             valid_t1 = [
@@ -471,12 +493,7 @@ def calculate_entry_targets(df, signal):
             rr2 = round((target2 - entry) / risk, 2)
         else:
             entry = current_price
-            stop_loss = (
-                resistance_levels[0]
-                if resistance_levels and
-                (resistance_levels[0] - entry) > atr * 0.5
-                else entry + 2 * atr
-            )
+            stop_loss = entry + atr_multiplier * atr
             risk = max(stop_loss - entry, atr)
             valid_t1 = [
                 s for s in support_levels
@@ -496,6 +513,7 @@ def calculate_entry_targets(df, signal):
             )
             rr1 = round((entry - target1) / risk, 2)
             rr2 = round((entry - target2) / risk, 2)
+
         return {
             "entry": round(entry, 2),
             "stop_loss": round(stop_loss, 2),
@@ -512,20 +530,25 @@ def calculate_entry_targets(df, signal):
             if "ATR" in df.columns
             else price * 0.02
         )
+        mult = 2.5 if regime == "bear" else 2.0
         return {
             "entry": round(price, 2),
-            "stop_loss": round(price - 2 * atr, 2),
+            "stop_loss": round(price - mult * atr, 2),
             "target1": round(price + 2 * atr, 2),
             "target2": round(price + 3 * atr, 2),
             "rr1": 2.0,
             "rr2": 3.0,
-            "risk_amount": round(2 * atr, 2)
+            "risk_amount": round(mult * atr, 2)
         }
 
 def calculate_position_size(capital, risk_pct,
-                             entry, stop_loss):
+                             entry, stop_loss,
+                             fii_bearish=False):
     try:
         risk_amount = capital * (risk_pct / 100)
+        # Halve position in bear FII environment
+        if fii_bearish:
+            risk_amount *= 0.5
         per_share_risk = abs(entry - stop_loss)
         if per_share_risk == 0:
             return 0, 0
@@ -535,6 +558,35 @@ def calculate_position_size(capital, risk_pct,
     except Exception:
         return 0, 0
 
+def check_liquidity(df, min_turnover_cr=50):
+    """
+    Check if stock has sufficient daily turnover.
+    Minimum ₹50 crore daily to avoid slippage.
+    """
+    try:
+        avg_volume = df["Volume"].tail(20).mean()
+        avg_price = df["Close"].tail(20).mean()
+        turnover_cr = (avg_volume * avg_price) / 1e7
+        return turnover_cr >= min_turnover_cr
+    except Exception:
+        return True
+
+def check_price_position(df):
+    """
+    Check how far stock is from 52-week high.
+    Avoid stocks within 2% of 52W high in bear market
+    as institutional resistance is strongest there.
+    """
+    try:
+        high_52w = df["High"].tail(252).max()
+        current = float(df["Close"].iloc[-1])
+        pct_from_high = (
+            (high_52w - current) / high_52w * 100
+        )
+        return pct_from_high
+    except Exception:
+        return 10.0
+
 def run_full_scan(tickers, capital=50000, risk_pct=1.5,
                   progress_callback=None):
     nifty_df = get_nifty_data()
@@ -543,7 +595,30 @@ def run_full_scan(tickers, capital=50000, risk_pct=1.5,
         regime = get_market_regime(nifty_df)
 
     earnings_map = get_nse_earnings_calendar()
+    dividend_map = get_dividend_exdates()
+    fii_data = get_nse_fii_dii_flow()
+    fii_bearish = (
+        fii_data is not None and
+        fii_data.get("sentiment") == "bearish"
+    )
+    fii_consecutive_selling = (
+        fii_data.get("consecutive_selling_days", 0)
+        if fii_data else 0
+    )
+
+    # Bear market — require higher relative strength
+    min_rs_bear = 3.0
+
+    # Score threshold by regime
+    if regime == "bear":
+        min_threshold = 55
+    elif regime == "unknown":
+        min_threshold = 50
+    else:
+        min_threshold = 45
+
     results = []
+    sector_counts = {}
     total = len(tickers)
 
     for i, ticker in enumerate(tickers):
@@ -557,8 +632,17 @@ def run_full_scan(tickers, capital=50000, risk_pct=1.5,
             if df is None or len(df) < 50:
                 continue
 
+            # Liquidity filter
+            if not check_liquidity(df, MIN_DAILY_TURNOVER_CR):
+                continue
+
             fundamentals = get_fundamentals(ticker)
             sector = get_sector(ticker)
+
+            # Max 2 picks per sector
+            if sector_counts.get(sector, 0) >= MAX_PICKS_PER_SECTOR:
+                continue
+
             correlation = (
                 get_nifty_correlation(df, nifty_df)
                 if nifty_df is not None else None
@@ -567,6 +651,19 @@ def run_full_scan(tickers, capital=50000, risk_pct=1.5,
                 get_relative_strength(df, nifty_df)
                 if nifty_df is not None else None
             )
+
+            # Bear market RS filter — must outperform
+            if regime == "bear" and (
+                rs is None or rs < min_rs_bear
+            ):
+                continue
+
+            # Dividend ex-date check — hard exclude
+            div_risk = get_dividend_risk(
+                ticker, dividend_map
+            )
+            if div_risk["flag"]:
+                continue
 
             news_data = get_news_sentiment(ticker)
             sentiment = news_data["sentiment"]
@@ -598,7 +695,12 @@ def run_full_scan(tickers, capital=50000, risk_pct=1.5,
                 continue
 
             rsi = float(df["RSI"].iloc[-1])
-            if rsi > 72 or rsi < 28:
+            if rsi > 70 or rsi < 28:
+                continue
+
+            # 52W high check — avoid near resistance
+            pct_from_high = check_price_position(df)
+            if regime == "bear" and pct_from_high < 3.0:
                 continue
 
             s1 = score_ml_signal(signal, confidence, buy_prob)
@@ -620,16 +722,16 @@ def run_full_scan(tickers, capital=50000, risk_pct=1.5,
                 s6 + s7 + s8 + s9 + s10
             )
 
-            min_threshold = (
-                45 if regime in ["bear", "unknown"] else 55
-            )
             if total_score < min_threshold:
                 continue
 
-            targets = calculate_entry_targets(df, signal)
+            targets = calculate_entry_targets(
+                df, signal, regime
+            )
             shares, cost = calculate_position_size(
                 capital, risk_pct,
-                targets["entry"], targets["stop_loss"]
+                targets["entry"], targets["stop_loss"],
+                fii_bearish=fii_bearish
             )
             risk_metrics = get_risk_metrics(df)
 
@@ -668,13 +770,24 @@ def run_full_scan(tickers, capital=50000, risk_pct=1.5,
                     targets["risk_amount"] * (100 / risk_pct)
                 )
                 capital_note = (
-                    f"Min capital needed: ₹{min_capital:,.0f}"
+                    f"Min capital needed: "
+                    f"₹{min_capital:,.0f}"
+                )
+            if fii_bearish:
+                capital_note = (
+                    "FII selling detected — "
+                    "position halved for safety. "
+                    + capital_note
                 )
 
             max_loss = round(
                 targets["risk_amount"] * shares
                 if shares > 0
                 else targets["risk_amount"], 2
+            )
+
+            sector_counts[sector] = (
+                sector_counts.get(sector, 0) + 1
             )
 
             results.append({
@@ -707,6 +820,8 @@ def run_full_scan(tickers, capital=50000, risk_pct=1.5,
                 "risk_level": risk_level,
                 "signal_breakdown": signal_breakdown,
                 "key_drivers": key_drivers,
+                "div_message": div_risk["message"],
+                "div_days": div_risk["days_to_ex"],
                 "earnings_message": (
                     earnings_status["message"]
                 ),
@@ -716,6 +831,8 @@ def run_full_scan(tickers, capital=50000, risk_pct=1.5,
                 "earnings_risk": (
                     earnings_status["risk_level"]
                 ),
+                "fii_bearish": fii_bearish,
+                "fii_selling_days": fii_consecutive_selling,
                 "sentiment": sentiment,
                 "sent_conf": round(sent_conf, 4),
                 "sentiment_score": sentiment_score,
@@ -723,8 +840,13 @@ def run_full_scan(tickers, capital=50000, risk_pct=1.5,
                 "correlation": correlation,
                 "relative_strength": rs,
                 "market_regime": regime,
+                "pct_from_52w_high": round(
+                    pct_from_high, 1
+                ),
                 "sharpe": risk_metrics["Sharpe Ratio"],
-                "max_drawdown": risk_metrics["Max Drawdown"],
+                "max_drawdown": (
+                    risk_metrics["Max Drawdown"]
+                ),
                 "score_breakdown": {
                     "ML Signal": f"{s1}/20",
                     "Multi-TF": f"{s2}/15",

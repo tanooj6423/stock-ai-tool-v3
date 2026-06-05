@@ -1,3 +1,4 @@
+import yfinance as yf
 import pandas as pd
 import numpy as np
 import streamlit as st
@@ -586,9 +587,94 @@ def check_price_position(df):
         return pct_from_high
     except Exception:
         return 10.0
+@st.cache_data(ttl=21600)
+def pre_filter_universe(tickers,
+                        min_price=10.0,
+                        min_avg_volume=200000,
+                        min_turnover_cr=3.0):
+    """
+    Phase 1: Fast batch pre-filter using 10-day data.
+    Runs in ~60-90 seconds for 2000 stocks.
+    Reduces universe to liquid, priced stocks only.
+    """
+    qualified = []
+    batch_size = 50
+    tickers = list(tickers)
 
-def run_full_scan(tickers, capital=50000, risk_pct=1.5,
-                  progress_callback=None):
+    for i in range(0, len(tickers), batch_size):
+        batch = tickers[i:i+batch_size]
+        try:
+            if len(batch) == 1:
+                raw = yf.download(
+                    batch[0], period="10d",
+                    progress=False, auto_adjust=True
+                )
+                if raw is None or raw.empty:
+                    continue
+                price = float(raw["Close"].iloc[-1])
+                vol = float(raw["Volume"].mean())
+                turnover = price * vol / 1e7
+                if (price >= min_price and
+                        vol >= min_avg_volume and
+                        turnover >= min_turnover_cr):
+                    qualified.append(batch[0])
+                continue
+
+            raw = yf.download(
+                batch, period="10d",
+                progress=False,
+                group_by="ticker",
+                auto_adjust=True,
+                threads=True
+            )
+            if raw is None or raw.empty:
+                continue
+
+            for ticker in batch:
+                try:
+                    if ticker in raw.columns.get_level_values(0):
+                        df_t = raw[ticker].dropna()
+                    else:
+                        continue
+                    if df_t.empty or len(df_t) < 3:
+                        continue
+                    price = float(df_t["Close"].iloc[-1])
+                    vol = float(df_t["Volume"].mean())
+                    turnover = price * vol / 1e7
+                    if (price >= min_price and
+                            vol >= min_avg_volume and
+                            turnover >= min_turnover_cr):
+                        qualified.append(ticker)
+                except Exception:
+                    continue
+        except Exception:
+            for ticker in batch:
+                try:
+                    df_t = yf.Ticker(
+                        ticker
+                    ).history(period="10d")
+                    if df_t is None or df_t.empty:
+                        continue
+                    price = float(
+                        df_t["Close"].iloc[-1]
+                    )
+                    vol = float(
+                        df_t["Volume"].mean()
+                    )
+                    turnover = price * vol / 1e7
+                    if (price >= min_price and
+                            vol >= min_avg_volume and
+                            turnover >= min_turnover_cr):
+                        qualified.append(ticker)
+                except Exception:
+                    continue
+
+    return qualified
+
+def run_full_scan(tickers, capital=50000,
+                  risk_pct=1.5,
+                  progress_callback=None,
+                  run_prefilter=True):
     nifty_df = get_nifty_data()
     regime = "unknown"
     if nifty_df is not None and not nifty_df.empty:
@@ -606,16 +692,33 @@ def run_full_scan(tickers, capital=50000, risk_pct=1.5,
         if fii_data else 0
     )
 
-    # Bear market — require higher relative strength
     min_rs_bear = 3.0
 
-    # Score threshold by regime
     if regime == "bear":
         min_threshold = 55
     elif regime == "unknown":
         min_threshold = 50
     else:
         min_threshold = 45
+
+    tickers = list(tickers)
+
+    # Phase 1 — pre-filter for large universes
+    if run_prefilter and len(tickers) > 150:
+        if progress_callback:
+            progress_callback(
+                0, len(tickers),
+                "PRE-FILTERING"
+            )
+        tickers = pre_filter_universe(
+            tuple(tickers)
+        )
+        if progress_callback:
+            progress_callback(
+                0, len(tickers),
+                f"Pre-filter complete — "
+                f"{len(tickers)} liquid stocks"
+            )
 
     results = []
     sector_counts = {}
@@ -625,22 +728,24 @@ def run_full_scan(tickers, capital=50000, risk_pct=1.5,
         if progress_callback:
             progress_callback(i, total, ticker)
         try:
-            df = get_stock_data(ticker, period="1y")
+            df = get_stock_data(ticker, period="2y")
             if df is None or len(df) < 60:
                 continue
             df = add_indicators(df)
             if df is None or len(df) < 50:
                 continue
 
-            # Liquidity filter
-            if not check_liquidity(df, MIN_DAILY_TURNOVER_CR):
+            if not check_liquidity(
+                df, MIN_DAILY_TURNOVER_CR
+            ):
                 continue
 
             fundamentals = get_fundamentals(ticker)
             sector = get_sector(ticker)
 
-            # Max 2 picks per sector
-            if sector_counts.get(sector, 0) >= MAX_PICKS_PER_SECTOR:
+            if sector_counts.get(
+                sector, 0
+            ) >= MAX_PICKS_PER_SECTOR:
                 continue
 
             correlation = (
@@ -652,13 +757,11 @@ def run_full_scan(tickers, capital=50000, risk_pct=1.5,
                 if nifty_df is not None else None
             )
 
-            # Bear market RS filter — must outperform
             if regime == "bear" and (
                 rs is None or rs < min_rs_bear
             ):
                 continue
 
-            # Dividend ex-date check — hard exclude
             div_risk = get_dividend_risk(
                 ticker, dividend_map
             )
@@ -668,7 +771,9 @@ def run_full_scan(tickers, capital=50000, risk_pct=1.5,
             news_data = get_news_sentiment(ticker)
             sentiment = news_data["sentiment"]
             sent_conf = news_data["confidence"]
-            sentiment_score = news_data["sentiment_score"]
+            sentiment_score = news_data[
+                "sentiment_score"
+            ]
             sentiment_trend = news_data["trend"]
             risk_flags = news_data["risk_flags"]
 
@@ -698,17 +803,20 @@ def run_full_scan(tickers, capital=50000, risk_pct=1.5,
             if rsi > 70 or rsi < 28:
                 continue
 
-            # 52W high check — avoid near resistance
             pct_from_high = check_price_position(df)
             if regime == "bear" and pct_from_high < 3.0:
                 continue
 
-            s1 = score_ml_signal(signal, confidence, buy_prob)
+            s1 = score_ml_signal(
+                signal, confidence, buy_prob
+            )
             s2 = score_multiframe(df)
             s3 = score_volume(df)
             s4 = score_market_regime(regime)
             s5 = score_relative_strength(rs)
-            s6 = score_sector_momentum(sector, SECTOR_INDICES)
+            s6 = score_sector_momentum(
+                sector, SECTOR_INDICES
+            )
             s7 = score_fundamentals(fundamentals)
             s8 = score_sentiment(
                 sentiment, sent_conf,
@@ -739,7 +847,9 @@ def run_full_scan(tickers, capital=50000, risk_pct=1.5,
                 float(df["ATR"].iloc[-1]) /
                 float(df["Close"].iloc[-1])
             )
-            vol_ratio = float(df["Volume_ratio"].iloc[-1])
+            vol_ratio = float(
+                df["Volume_ratio"].iloc[-1]
+            )
 
             holding_days = predict_holding_days(
                 df, signal, confidence, regime, rs
@@ -767,7 +877,8 @@ def run_full_scan(tickers, capital=50000, risk_pct=1.5,
             capital_note = ""
             if shares == 0:
                 min_capital = (
-                    targets["risk_amount"] * (100 / risk_pct)
+                    targets["risk_amount"] *
+                    (100 / risk_pct)
                 )
                 capital_note = (
                     f"Min capital needed: "
@@ -775,8 +886,7 @@ def run_full_scan(tickers, capital=50000, risk_pct=1.5,
                 )
             if fii_bearish:
                 capital_note = (
-                    "FII selling detected — "
-                    "position halved for safety. "
+                    "FII selling — position halved. "
                     + capital_note
                 )
 
@@ -832,7 +942,9 @@ def run_full_scan(tickers, capital=50000, risk_pct=1.5,
                     earnings_status["risk_level"]
                 ),
                 "fii_bearish": fii_bearish,
-                "fii_selling_days": fii_consecutive_selling,
+                "fii_selling_days": (
+                    fii_consecutive_selling
+                ),
                 "sentiment": sentiment,
                 "sent_conf": round(sent_conf, 4),
                 "sentiment_score": sentiment_score,
@@ -863,5 +975,7 @@ def run_full_scan(tickers, capital=50000, risk_pct=1.5,
         except Exception:
             continue
 
-    results.sort(key=lambda x: x["score"], reverse=True)
+    results.sort(
+        key=lambda x: x["score"], reverse=True
+    )
     return results[:10], regime

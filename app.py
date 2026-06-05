@@ -442,7 +442,9 @@ with tab7:
         "Scan universe",
         ["Nifty 50 only",
          "Nifty 50 + Next 50",
-         "Full universe (150 stocks)"],
+         "Nifty 50 + Next 50 + Midcap 150",
+         "Top 500 curated stocks",
+         "All NSE listed stocks (~2000)"],
         index=1
     )
     st.markdown(
@@ -465,13 +467,34 @@ with tab1:
         label_visibility="collapsed"
     )
 
+    from universe import (NIFTY_NEXT_50,
+                          NIFTY_MIDCAP_150,
+                          ALL_STOCKS,
+                          get_nse_all_stocks)
     if scan_universe == "Nifty 50 only":
         scan_tickers = NIFTY_50
     elif scan_universe == "Nifty 50 + Next 50":
-        from universe import NIFTY_NEXT_50
         scan_tickers = NIFTY_50 + NIFTY_NEXT_50
-    else:
+    elif scan_universe == (
+        "Nifty 50 + Next 50 + Midcap 150"
+    ):
+        scan_tickers = (
+            NIFTY_50 + NIFTY_NEXT_50 +
+            NIFTY_MIDCAP_150
+        )
+    elif scan_universe == "Top 500 curated stocks":
         scan_tickers = ALL_STOCKS
+    else:
+        with st.spinner(
+            "Fetching full NSE stock list..."
+        ):
+            scan_tickers = get_nse_all_stocks()
+        st.caption(
+            f"Full NSE universe: "
+            f"{len(scan_tickers)} stocks loaded. "
+            f"Pre-filter will run first (~90 seconds) "
+            f"then full scan (~15-20 minutes)."
+        )
 
     top_row_l, top_row_r = st.columns([5, 1])
     with top_row_l:

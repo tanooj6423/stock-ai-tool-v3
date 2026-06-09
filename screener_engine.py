@@ -302,25 +302,28 @@ def get_signal_breakdown(df, signal, regime, rs,
                     else "🟡"
                 )
             },
-            {
-                "Factor": "Trend (SMA)",
-                "Reading": (
-                    "Above all SMAs"
-                    if price > sma200
-                    else "Below SMA200"
-                ),
-                "Status": (
-                    "Uptrend confirmed"
-                    if price > sma50
-                    else "Below key average"
-                ),
-                "Signal": (
-                    "🟢"
-                    if price > sma50 and price > sma200
-                    else "🔴" if price < sma50
-                    else "🟡"
-                )
-            },
+             {
+                 "Factor": "Trend (SMA)",
+                 "Reading": (
+                     "Above all SMAs"
+                     if price > sma200
+                     else "Below SMA200"
+                 ),
+                 "Status": (
+                     "Uptrend confirmed"
+                     if price > sma50 and price > sma200
+                     else "Above SMA50 only"
+                     if price > sma50
+                     else "Below key averages"
+                 ),
+                 "Signal": (
+                     "🟢"
+                     if price > sma50 and price > sma200
+                     else "🔴" if price < sma50
+                     else "🟡"
+                 )
+             },
+
             {
                 "Factor": "Volume",
                 "Reading": f"{vol_ratio:.1f}x avg",
@@ -837,10 +840,13 @@ def run_full_scan(tickers, capital=50000,
                 df, signal, regime
             )
             shares, cost = calculate_position_size(
-                capital, risk_pct,
-                targets["entry"], targets["stop_loss"],
-                fii_bearish=fii_bearish
-            )
+                 capital, risk_pct,
+                 targets["entry"], targets["stop_loss"],
+                 fii_bearish=fii_bearish
+             )
+             # Skip picks user cannot actually trade with current capital
+            if shares == 0:
+                 continue
             risk_metrics = get_risk_metrics(df)
 
             atr_pct = (

@@ -19,3 +19,4 @@ lxml
 fpdf2
 kiteconnect
 lightgbm
+alpaca-py

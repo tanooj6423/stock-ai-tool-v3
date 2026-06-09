@@ -69,11 +69,24 @@ def get_sector_data(sector_ticker):
 def get_fundamentals(ticker):
     try:
         info = yf.Ticker(ticker).info
+ 
+        # 52W High/Low from info first, fallback to OHLCV history
+        w52_high = info.get("fiftyTwoWeekHigh", None)
+        w52_low = info.get("fiftyTwoWeekLow", None)
+        if not w52_high or not w52_low:
+            try:
+                hist = yf.Ticker(ticker).history(period="1y")
+                if not hist.empty:
+                    w52_high = round(float(hist["High"].max()), 2)
+                    w52_low = round(float(hist["Low"].min()), 2)
+            except Exception:
+                pass
+ 
         return {
             "PE Ratio": info.get("trailingPE", "N/A"),
             "Market Cap": info.get("marketCap", "N/A"),
-            "52W High": info.get("fiftyTwoWeekHigh", "N/A"),
-            "52W Low": info.get("fiftyTwoWeekLow", "N/A"),
+            "52W High": w52_high if w52_high else "N/A",
+            "52W Low": w52_low if w52_low else "N/A",
             "Dividend Yield": info.get("dividendYield", "N/A"),
             "Beta": info.get("beta", "N/A"),
             "Sector": info.get("sector", "N/A"),
@@ -81,12 +94,11 @@ def get_fundamentals(ticker):
             "Revenue Growth": info.get("revenueGrowth", "N/A"),
             "Debt to Equity": info.get("debtToEquity", "N/A"),
             "ROE": info.get("returnOnEquity", "N/A"),
-            "Promoter Holding": info.get(
-                "heldPercentInsiders", "N/A"
-            ),
+            "Promoter Holding": info.get("heldPercentInsiders", "N/A"),
         }
     except Exception:
         return {}
+ 
 
 @st.cache_data(ttl=86400)
 def get_nse_delivery_data(ticker):

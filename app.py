@@ -31,6 +31,7 @@ from watchlist import (render_watchlist_tab, add_to_watchlist,
 from broker import (render_zerodha_panel, get_live_quote,
                     is_connected, is_market_hours,
                     place_gtt_order)
+from tab_us_stocks import render_us_stocks_tab
 
 load_dotenv()
 
@@ -397,11 +398,16 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
-    "Daily Picks", "Morning Check",
-    "Stock Analysis", "Price Forecast",
-    "Watchlist", "Journal", "Settings"
-])
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
+         "Daily Picks",
+         "Morning Check",
+         "Stock Analysis",
+         "Price Forecast",
+         "Watchlist",
+         "Journal",
+         "Settings",
+         "🇺🇸 US Stocks",
+     ])
 
 with tab7:
     st.markdown(
@@ -1793,3 +1799,6 @@ with tab5:
 
 with tab6:
     render_journal_tab(t)
+
+with tab8:
+    render_us_stocks_tab(t, {"capital": capital, "risk_pct": risk_pct})

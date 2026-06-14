@@ -228,7 +228,7 @@ def _render_pick_card(pick: dict, idx: int, theme: dict,
             border-radius:12px;padding:20px;margin-bottom:18px;'>
             <div style='display:flex;justify-content:space-between;align-items:center;'>
               <div>
-                <span style='font-size:1.5em;font-weight:700;color:{theme["text1"]}'>{ticker}</span>
+                <span style='font-size:1.5em;font-weight:700;color:{theme["text"]}'>{ticker}</span>
                 <span style='margin-left:10px;color:#888;font-size:0.88em'>{sector}</span>
               </div>
               <div style='text-align:right;'>
@@ -242,7 +242,7 @@ def _render_pick_card(pick: dict, idx: int, theme: dict,
               </div>
             </div>
             <div style='color:{theme["text2"]};font-size:0.85em;margin-top:6px'>
-              Current price: <b style='color:{theme["text1"]}'>${price:,.2f}</b>
+              Current price: <b style='color:{theme["text"]}'>${price:,.2f}</b>
               &nbsp;·&nbsp; Regime: {regime.capitalize()}
               &nbsp;·&nbsp; Confidence: {confidence:.0%}
               {f'&nbsp;·&nbsp; RS vs SPY: {rs:+.1f}%' if rs is not None else ''}
@@ -453,7 +453,7 @@ def _render_empty_state(theme: dict):
         background:{theme["card"]};border-radius:12px;
         border:1px dashed {theme["border"]};'>
         <div style='font-size:3em'>🇺🇸</div>
-        <h3 style='color:{theme["text1"]};margin:12px 0 6px'>US Market Scanner</h3>
+        <h3 style='color:{theme["text"]};margin:12px 0 6px'>US Market Scanner</h3>
         <p style='color:{theme["text2"]};max-width:400px;margin:auto;font-size:0.92em'>
           Scan S&P 500 and Russell 2000 for high-probability swing trade setups.
           Uses the same ML + 10-layer composite scoring as your India picks.

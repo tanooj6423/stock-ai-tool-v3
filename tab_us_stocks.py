@@ -139,13 +139,18 @@ def render_us_stocks_tab(theme: dict, settings: dict):
                     progress_bar.progress(pct, text=f"Scanning {ticker}… ({i}/{total})")
                     status_text.caption(f"Scanning: {ticker}")
 
-            with st.spinner("Running US market scan..."):
-                picks, final_regime = run_us_scan(
-                    tickers_tuple=tuple(tickers),
-                    capital=capital,
-                    risk_pct=risk_pct,
-                    _progress_callback=_progress,
-                )
+            cache_key = f"us_scan_{mode}_{capital}_{risk_pct}"
+            if cache_key in st.session_state:
+                picks, final_regime = st.session_state[cache_key]
+            else:
+                with st.spinner("Running US market scan..."):
+                    picks, final_regime = run_us_scan(
+                        tickers_tuple=tuple(tickers),
+                        capital=capital,
+                        risk_pct=risk_pct,
+                        _progress_callback=_progress,
+                    )
+                st.session_state[cache_key] = (picks, final_regime)
 
             progress_bar.empty()
             status_text.empty()

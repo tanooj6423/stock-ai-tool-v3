@@ -445,7 +445,7 @@ def _get_us_key_drivers(df, regime, rs, sentiment,
  
 # ── Main scan ────────────────────────────────────────────────
  
-@st.cache_data(ttl=21600)
+
 def run_us_scan(tickers_tuple: tuple,
                 capital: float = 10000.0,
                 risk_pct: float = 1.5,

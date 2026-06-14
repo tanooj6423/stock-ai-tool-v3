@@ -449,7 +449,7 @@ def _get_us_key_drivers(df, regime, rs, sentiment,
 def run_us_scan(tickers_tuple: tuple,
                 capital: float = 10000.0,
                 risk_pct: float = 1.5,
-                progress_callback=None,
+                _progress_callback=None,
                 run_prefilter: bool = True) -> tuple:
     """Full US scan. Returns (picks_list, regime_str). Backward compatible
     with v1 output keys; adds ev, quality, kelly fields, trade_plan, adx."""
@@ -472,11 +472,11 @@ def run_us_scan(tickers_tuple: tuple,
     min_rs_bear = 3.0
  
     if run_prefilter and len(tickers) > 150:
-        if progress_callback:
-            progress_callback(0, len(tickers), "PRE-FILTERING")
+        if _progress_callback:
+            _progress_callback(0, len(tickers), "PRE-FILTERING")
         tickers = pre_filter_us_universe(tuple(tickers))
-        if progress_callback:
-            progress_callback(0, len(tickers),
+        if _progress_callback:
+            _progress_callback(0, len(tickers),
                               f"Pre-filter complete — {len(tickers)} liquid stocks")
  
     results = []
@@ -484,8 +484,8 @@ def run_us_scan(tickers_tuple: tuple,
     total = len(tickers)
  
     for i, ticker in enumerate(tickers):
-        if progress_callback:
-            progress_callback(i, total, ticker)
+        if _progress_callback:
+            _progress_callback(i, total, ticker)
         try:
             # Single enriched frame — same features the model trained on
             df = prepare_us_frame(ticker)

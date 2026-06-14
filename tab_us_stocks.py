@@ -144,7 +144,7 @@ def render_us_stocks_tab(theme: dict, settings: dict):
                     tickers_tuple=tuple(tickers),
                     capital=capital,
                     risk_pct=risk_pct,
-                    progress_callback=_progress,
+                    _progress_callback=_progress,
                 )
 
             progress_bar.empty()

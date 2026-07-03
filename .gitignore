@@ -1,0 +1,8 @@
+.env
+__pycache__/
+*.pyc
+.DS_Store
+*.pkl
+*.joblib
+crypto/data/features.parquet
+!crypto/artifacts/*.joblib

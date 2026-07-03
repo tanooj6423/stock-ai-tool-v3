@@ -10,10 +10,11 @@ $PY -m crypto.pipeline daily
 
 git add -A crypto
 if git diff --cached --quiet; then
-    echo "no data changes; nothing to deploy"
-    exit 0
+    echo "no data changes to commit"
+else
+    git commit -m "daily refresh $(date -u +%F)"
 fi
-git commit -m "daily refresh $(date -u +%F)"
+# push unconditionally: retries any commit whose push failed on a prior run
 git push hf-crypto HEAD:main     # redeploys the Hugging Face Space
 git push origin HEAD             # keep GitHub copy of this branch current
 echo "=== done $(date -u '+%F %T') UTC ==="

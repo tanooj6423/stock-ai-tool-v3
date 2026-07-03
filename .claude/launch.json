@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "crypto-dashboard",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "streamlit", "run", "crypto/app.py",
+                      "--server.headless", "true", "--server.port", "8503"],
+      "port": 8503
+    }
+  ]
+}

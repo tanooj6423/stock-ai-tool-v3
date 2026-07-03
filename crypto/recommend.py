@@ -174,7 +174,12 @@ def render_text(rec: pd.DataFrame) -> str:
 
 
 def main() -> None:
-    budget = float(sys.argv[1]) if len(sys.argv) > 1 else 10_000.0
+    budget = 10_000.0
+    if len(sys.argv) > 1:  # tolerate non-numeric argv (e.g. `pipeline daily`)
+        try:
+            budget = float(sys.argv[1])
+        except ValueError:
+            pass
     rec = build_recommendations(budget)
     rec.to_parquet(ARTIFACT_DIR / "recommendations.parquet", index=False)
     print(render_text(rec))

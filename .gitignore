@@ -1,4 +1,7 @@
 .env
+data/
+trade_journal.json
+watchlist.json
 __pycache__/
 *.pyc
 .DS_Store

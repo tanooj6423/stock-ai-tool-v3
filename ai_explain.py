@@ -53,25 +53,28 @@ def explain_signal(ticker, signal, confidence, sentiment,
     if sector and sector != "N/A":
         fundamentals += f"\n- Sector: {sector}"
 
-    prompt = f"""You are a senior equity analyst at a top-tier Indian 
-investment bank specialising in NSE-listed stocks.
+    prompt = f"""You are a quantitative market analyst writing an
+objective data commentary on an NSE-listed stock.
 
-Analyse {ticker} based on the following data and produce a structured 
-investment brief.
+Summarise what the data shows for {ticker}. Describe conditions and
+statistics only — do NOT recommend buying, selling, or any action.
+Avoid words like "buy", "sell", "accumulate", "book profits",
+"should", "verdict".
 
 TECHNICAL DATA:{technicals}
 {f'RISK METRICS:{risk}' if risk else ''}
 {f'FUNDAMENTAL DATA:{fundamentals}' if fundamentals else ''}
 
-Write a professional 5-point analysis:
-1. Technical outlook
-2. Momentum and sentiment
-3. Risk assessment
+Write a professional 5-point data commentary:
+1. Technical picture (what the indicators currently show)
+2. Momentum and news sentiment readings
+3. Risk statistics and what they imply about volatility
 4. Fundamental context
-5. Summary verdict — one decisive sentence
+5. Summary of conditions — one neutral sentence describing the
+   overall statistical picture
 
-Use precise financial language.
-End with: "This is not financial advice."
+Use precise, neutral financial language.
+End with: "This is a statistical commentary, not investment advice."
 """
     try:
         client = genai.Client(api_key=get_api_key())
@@ -97,25 +100,27 @@ def generate_pick_thesis(ticker, signal, confidence, score,
                           rr_ratio, sentiment, rsi, sector,
                           market_regime, relative_strength):
 
-    prompt = f"""You are a professional swing trader and analyst.
+    prompt = f"""You are a quantitative analyst describing why a
+statistical model flagged a setup. Describe, never advise: no "buy",
+"sell", "enter", or "should".
 
-Generate a concise 3-sentence trade thesis for {ticker}.
+Generate a concise 3-sentence data summary for {ticker}.
 
 Data:
-- Signal: {signal} | Score: {score}/100 | Confidence: {confidence:.1%}
-- Entry: ₹{entry:,.2f} | Stop: ₹{stop_loss:,.2f} | T1: ₹{target1:,.2f} | T2: ₹{target2:,.2f}
-- R/R ratio: 1:{rr_ratio:.1f}
+- Model signal: {signal} | Score: {score}/100 | Probability: {confidence:.1%}
+- Reference zone: ₹{entry:,.2f} | Invalidation: ₹{stop_loss:,.2f} | T1: ₹{target1:,.2f} | T2: ₹{target2:,.2f}
+- Reward/risk ratio: 1:{rr_ratio:.1f}
 - RSI: {rsi:.1f} | Sentiment: {sentiment}
 - Sector: {sector} | Market regime: {market_regime}
 - Relative strength vs Nifty: {relative_strength}
 
 Write:
-1. Why this setup is compelling right now
-2. The key catalyst or technical trigger
-3. The main risk to watch
+1. Which statistical conditions triggered the model's flag
+2. The key technical or sentiment factor in the data
+3. The main risk factor visible in the data
 
-Be specific, concise, professional.
-End with: "Not financial advice."
+Be specific, concise, neutral.
+End with: "This is a statistical summary, not investment advice."
 """
     try:
         client = genai.Client(api_key=get_api_key())

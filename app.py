@@ -42,75 +42,58 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Koyfin-inspired design system.
+# Two skins of one visual language: slate-navy surfaces,
+# indigo brand accent, hairline borders, pill buttons,
+# underline tabs, mono numerals.
 THEMES = {
-    "Soft Beige": {
-        "bg": "#f5f0eb",
-        "bg2": "#faf7f4",
+    "Koyfin Dark": {
+        "bg": "#0e1116",
+        "bg2": "#12161d",
+        "card": "#161b23",
+        "border": "#242b37",
+        "green": "#00c48c",
+        "red": "#f6465d",
+        "blue": "#3e7bfa",
+        "gold": "#f5a623",
+        "text": "#e8ecf3",
+        "text2": "#8b94a7",
+        "accent": "#6366f1",
+        "accent_rgb": "99,102,241",
+        "green_rgb": "0,196,140",
+        "red_rgb": "246,70,93",
+        "btn_text": "#ffffff",
+        "success": "#00c48c",
+        "danger": "#f6465d",
+        "warn": "#f5a623",
+    },
+    "Koyfin Light": {
+        "bg": "#ffffff",
+        "bg2": "#f7f8fa",
         "card": "#ffffff",
-        "border": "#e8e0d8",
-        "green": "#2d7d5a",
-        "red": "#c0392b",
-        "blue": "#2c5f8a",
-        "gold": "#b8860b",
-        "text": "#2c2416",
-        "text2": "#8c7b6b",
-        "accent": "#8b6914",
-        "accent_rgb": "139,105,20",
-        "green_rgb": "45,125,90",
-        "red_rgb": "192,57,43",
-    },
-    "Bloomberg Dark": {
-        "bg": "#060608",
-        "bg2": "#0d0d12",
-        "card": "#12121a",
-        "border": "#1e1e2e",
-        "green": "#00d4aa",
-        "red": "#ff4757",
-        "blue": "#5352ed",
-        "gold": "#ffd32a",
-        "text": "#e8e8f0",
-        "text2": "#8888a8",
-        "accent": "#00d4aa",
-        "accent_rgb": "0,212,170",
-        "green_rgb": "0,212,170",
-        "red_rgb": "255,71,87",
-    },
-    "Midnight Navy": {
-        "bg": "#030711",
-        "bg2": "#080f1f",
-        "card": "#0d1628",
-        "border": "#1a2540",
-        "green": "#00e5a0",
-        "red": "#ff3860",
-        "blue": "#4facfe",
-        "gold": "#f9a825",
-        "text": "#e2e8f0",
-        "text2": "#718096",
-        "accent": "#4facfe",
-        "accent_rgb": "79,172,254",
-        "green_rgb": "0,229,160",
-        "red_rgb": "255,56,96",
-    },
-    "Professional Light": {
-        "bg": "#f8fafc",
-        "bg2": "#ffffff",
-        "card": "#ffffff",
-        "border": "#e2e8f0",
-        "green": "#059669",
-        "red": "#dc2626",
+        "border": "#e4e7ee",
+        "green": "#0ba05f",
+        "red": "#d92d20",
         "blue": "#2563eb",
-        "gold": "#d97706",
-        "text": "#0f172a",
-        "text2": "#64748b",
-        "accent": "#2563eb",
-        "accent_rgb": "37,99,235",
-        "green_rgb": "5,150,105",
-        "red_rgb": "220,38,38",
-    }
+        "gold": "#b45309",
+        "text": "#101828",
+        "text2": "#667085",
+        "accent": "#4f46e5",
+        "accent_rgb": "79,70,229",
+        "green_rgb": "11,160,95",
+        "red_rgb": "217,45,32",
+        "btn_text": "#ffffff",
+        "success": "#0ba05f",
+        "danger": "#d92d20",
+        "warn": "#b45309",
+    },
 }
 
 if "theme" not in st.session_state:
-    st.session_state.theme = "Soft Beige"
+    st.session_state.theme = "Koyfin Dark"
+if st.session_state.theme not in THEMES:
+    # Migrate sessions saved on old theme names
+    st.session_state.theme = "Koyfin Dark"
 
 t = THEMES[st.session_state.theme]
 
@@ -131,14 +114,19 @@ section[data-testid="stSidebar"] {{
 section[data-testid="stSidebar"] * {{ color: {t['text']} !important; }}
 .block-container {{ padding-top: 24px; padding-bottom: 48px; }}
 .app-header {{
-    padding-bottom: 20px;
+    display: flex; align-items: baseline;
+    gap: 14px; flex-wrap: wrap;
+    padding-bottom: 18px;
     margin-bottom: 8px;
     border-bottom: 1px solid {t['border']};
 }}
 .app-name {{
-    font-size: 15px; font-weight: 700;
-    color: {t['accent']}; letter-spacing: 2px;
-    text-transform: uppercase; margin: 0 0 4px 0;
+    font-size: 19px; font-weight: 700;
+    color: {t['text']}; letter-spacing: -0.3px;
+    margin: 0;
+}}
+.app-name .brand-dot {{
+    color: {t['accent']};
 }}
 .app-tagline {{ font-size: 12px; color: {t['text2']}; }}
 .section-label {{
@@ -147,27 +135,27 @@ section[data-testid="stSidebar"] * {{ color: {t['text']} !important; }}
     letter-spacing: 2px; margin: 28px 0 12px 0;
 }}
 .badge-buy {{
-    font-size: 11px; font-weight: 700;
+    font-size: 11px; font-weight: 600;
     color: {t['green']};
     background: rgba({t['green_rgb']},0.12);
-    border: 1px solid rgba({t['green_rgb']},0.3);
-    padding: 2px 10px; border-radius: 4px;
-    letter-spacing: 1px;
+    border: 1px solid rgba({t['green_rgb']},0.28);
+    padding: 3px 12px; border-radius: 999px;
+    letter-spacing: 0.8px;
 }}
 .badge-sell {{
-    font-size: 11px; font-weight: 700;
+    font-size: 11px; font-weight: 600;
     color: {t['red']};
     background: rgba({t['red_rgb']},0.12);
-    border: 1px solid rgba({t['red_rgb']},0.3);
-    padding: 2px 10px; border-radius: 4px;
-    letter-spacing: 1px;
+    border: 1px solid rgba({t['red_rgb']},0.28);
+    padding: 3px 12px; border-radius: 999px;
+    letter-spacing: 0.8px;
 }}
 .badge-score {{
     font-size: 11px; font-weight: 600;
     color: {t['accent']};
-    background: rgba({t['accent_rgb']},0.1);
-    border: 1px solid rgba({t['accent_rgb']},0.25);
-    padding: 2px 10px; border-radius: 4px;
+    background: rgba({t['accent_rgb']},0.12);
+    border: 1px solid rgba({t['accent_rgb']},0.28);
+    padding: 3px 12px; border-radius: 999px;
     font-family: 'JetBrains Mono', monospace;
 }}
 .pick-meta {{ font-size: 12px; color: {t['text2']}; }}
@@ -198,7 +186,7 @@ section[data-testid="stSidebar"] * {{ color: {t['text']} !important; }}
     background: rgba({t['green_rgb']},0.06);
     border: 1px solid rgba({t['green_rgb']},0.25);
     border-left: 3px solid {t['green']};
-    border-radius: 0 8px 8px 0;
+    border-radius: 0 10px 10px 0;
     padding: 16px 18px; font-size: 13px;
     color: {t['text']}; line-height: 1.85;
     margin: 8px 0;
@@ -255,9 +243,10 @@ section[data-testid="stSidebar"] * {{ color: {t['text']} !important; }}
     display: flex; gap: 20px; align-items: center;
     background: {t['card']};
     border: 1px solid {t['border']};
-    border-radius: 6px; padding: 10px 16px;
+    border-radius: 10px; padding: 12px 18px;
     margin-bottom: 20px; font-size: 12px;
     flex-wrap: wrap;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }}
 .status-item {{ color: {t['text2']}; }}
 .status-value {{
@@ -277,7 +266,7 @@ section[data-testid="stSidebar"] * {{ color: {t['text']} !important; }}
 .sentiment-cell {{
     background: {t['bg2']};
     border: 1px solid {t['border']};
-    border-radius: 6px; padding: 10px 12px;
+    border-radius: 10px; padding: 10px 12px;
 }}
 .sentiment-cell-label {{
     font-size: 9px; color: {t['text2']};
@@ -326,45 +315,75 @@ section[data-testid="stSidebar"] * {{ color: {t['text']} !important; }}
     text-transform: uppercase !important;
     letter-spacing: 1px !important;
 }}
+/* Koyfin-style underline navigation tabs */
 .stTabs [data-baseweb="tab-list"] {{
-    background: {t['bg2']};
-    border: 1px solid {t['border']};
-    border-radius: 6px; padding: 3px; gap: 2px;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid {t['border']};
+    border-radius: 0; padding: 0; gap: 4px;
 }}
 .stTabs [data-baseweb="tab"] {{
-    background: rgba(0,0,0,0);
-    border-radius: 4px; color: {t['text2']};
-    font-size: 12px; font-weight: 500;
-    padding: 6px 14px; letter-spacing: 0.3px;
+    background: transparent;
+    border-radius: 0; color: {t['text2']};
+    font-size: 13px; font-weight: 500;
+    padding: 10px 16px; letter-spacing: 0.2px;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+}}
+.stTabs [data-baseweb="tab"]:hover {{
+    color: {t['text']};
 }}
 .stTabs [aria-selected="true"] {{
-    background: rgba({t['accent_rgb']},0.15) !important;
-    color: {t['accent']} !important;
-    border: 1px solid rgba({t['accent_rgb']},0.3) !important;
+    background: transparent !important;
+    color: {t['text']} !important;
+    border: none !important;
+    border-bottom: 2px solid {t['accent']} !important;
+    font-weight: 600 !important;
+}}
+.stTabs [data-baseweb="tab-highlight"],
+.stTabs [data-baseweb="tab-border"] {{
+    background: transparent !important;
 }}
 .stExpander {{
     background: {t['card']} !important;
     border: 1px solid {t['border']} !important;
-    border-radius: 8px !important;
-    margin-bottom: 8px !important;
+    border-radius: 10px !important;
+    margin-bottom: 10px !important;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.06) !important;
 }}
+/* Koyfin-style pill CTA buttons */
 .stButton > button {{
     background: {t['accent']} !important;
-    color: {t['bg2']} !important;
+    color: {t['btn_text']} !important;
     border: none !important;
-    border-radius: 5px !important;
-    font-weight: 700 !important;
-    font-size: 12px !important;
-    letter-spacing: 0.5px !important;
-    padding: 8px 18px !important;
+    border-radius: 999px !important;
+    font-weight: 600 !important;
+    font-size: 13px !important;
+    letter-spacing: 0.2px !important;
+    padding: 9px 22px !important;
+    box-shadow: 0 1px 3px rgba({t['accent_rgb']},0.35) !important;
+    transition: filter .15s ease,
+        transform .05s ease !important;
+}}
+.stButton > button:hover {{
+    filter: brightness(1.1) !important;
+}}
+.stButton > button:active {{
+    transform: scale(0.98) !important;
 }}
 .stSelectbox > div > div,
 .stTextInput > div > div > input {{
     background: {t['bg2']} !important;
     border: 1px solid {t['border']} !important;
     color: {t['text']} !important;
-    border-radius: 6px !important;
+    border-radius: 8px !important;
     font-size: 13px !important;
+}}
+.stSelectbox > div > div:focus-within,
+.stTextInput > div > div > input:focus {{
+    border-color: rgba({t['accent_rgb']},0.6) !important;
+    box-shadow: 0 0 0 3px
+        rgba({t['accent_rgb']},0.15) !important;
 }}
 .stProgress > div > div > div {{
     background: {t['accent']} !important;
@@ -373,13 +392,13 @@ section[data-testid="stSidebar"] * {{ color: {t['text']} !important; }}
     background: {t['border']} !important;
 }}
 .sidebar-brand {{
-    font-size: 13px; font-weight: 700;
-    color: {t['accent']}; letter-spacing: 2px;
-    text-transform: uppercase;
+    font-size: 15px; font-weight: 700;
+    color: {t['text']}; letter-spacing: -0.2px;
     padding: 12px 0 16px 0;
     border-bottom: 1px solid {t['border']};
     margin-bottom: 20px;
 }}
+.sidebar-brand .brand-dot {{ color: {t['accent']}; }}
 .sidebar-label {{
     font-size: 9px; font-weight: 700;
     color: {t['text2']}; text-transform: uppercase;
@@ -390,10 +409,12 @@ section[data-testid="stSidebar"] * {{ color: {t['text']} !important; }}
 
 st.markdown(f"""
 <div class="app-header">
-    <div class="app-name">Equitex Intelligence</div>
+    <div class="app-name">equitex<span
+        class="brand-dot">.</span></div>
     <div class="app-tagline">
-        Personal AI trading assistant ·
-        NSE markets · Not financial advice
+        Quantitative market analytics · NSE markets ·
+        Research tool — not investment advice ·
+        Not SEBI-registered
     </div>
 </div>
 """, unsafe_allow_html=True)
@@ -461,7 +482,8 @@ with tab7:
 
 with tab1:
     st.sidebar.markdown(
-        f'<div class="sidebar-brand">Equitex</div>',
+        f'<div class="sidebar-brand">equitex'
+        f'<span class="brand-dot">.</span></div>',
         unsafe_allow_html=True
     )
     st.sidebar.markdown(
@@ -609,6 +631,10 @@ with tab1:
         for i, pick in enumerate(picks):
             score = pick["score"]
             signal = pick["signal"]
+            display_signal = (
+                "BULLISH" if signal == "BUY"
+                else "BEARISH"
+            )
             badge_class = (
                 "badge-buy" if signal == "BUY"
                 else "badge-sell"
@@ -644,7 +670,8 @@ with tab1:
             with st.expander(
                 f"#{i+1}  "
                 f"{pick['ticker'].replace('.NS','')}  ·  "
-                f"{signal} {pick['confidence']:.0%}  ·  "
+                f"{display_signal} "
+                f"{pick['confidence']:.0%}  ·  "
                 f"{score}/100  ·  "
                 f"₹{display_price:,.2f}  ·  "
                 f"Risk: {risk_level}  ·  "
@@ -656,7 +683,7 @@ with tab1:
                     f'align-items:center;gap:10px;'
                     f'margin-bottom:4px;flex-wrap:wrap;">'
                     f'<span class="{badge_class}">'
-                    f'{signal}</span>'
+                    f'{display_signal}</span>'
                     f'<span class="badge-score">'
                     f'{score}/100</span>'
                     f'<span style="font-size:11px;'
@@ -704,7 +731,7 @@ with tab1:
                 if drivers:
                     st.markdown(
                         '<div class="level-label">'
-                        'Why this trade</div>',
+                        'Signal drivers</div>',
                         unsafe_allow_html=True
                     )
                     drivers_html = "".join([
@@ -721,7 +748,7 @@ with tab1:
 
                 st.markdown(
                     '<div class="level-label">'
-                    'Trade instruction</div>',
+                    'Model scenario</div>',
                     unsafe_allow_html=True
                 )
                 st.markdown(
@@ -737,7 +764,7 @@ with tab1:
 
                 st.markdown(
                     '<div class="level-label">'
-                    'Trade levels</div>',
+                    'Reference levels</div>',
                     unsafe_allow_html=True
                 )
                 c1, c2, c3, c4, c5, c6, c7 = st.columns(7)
@@ -1449,13 +1476,17 @@ with tab3:
             "badge-buy" if signal == "BUY"
             else "badge-sell"
         )
+        sig_label = (
+            "BULLISH" if signal == "BUY" else "BEARISH"
+        )
         st.markdown(
-            f'<span class="{sig_badge}">{signal}</span>'
+            f'<span class="{sig_badge}">{sig_label}</span>'
             f'&nbsp;&nbsp;'
             f'<span style="font-size:12px;'
             f'color:{t["text2"]};">'
-            f'Confidence {confidence:.1%} · '
-            f'Accuracy {accuracy:.1%}</span>',
+            f'Model probability {confidence:.1%} · '
+            f'Holdout fit {accuracy:.1%} (indicative, '
+            f'small sample)</span>',
             unsafe_allow_html=True
         )
         st.markdown("<br>", unsafe_allow_html=True)
@@ -1802,3 +1833,15 @@ with tab6:
 
 with tab8:
     render_us_stocks_tab(t, {"capital": capital, "risk_pct": risk_pct})
+# ---------------------------------------------------------
+# Compliance footer (shown on every page)
+# ---------------------------------------------------------
+from config import DISCLAIMER_LONG
+
+st.markdown(
+    f"""<div style="margin-top:48px;padding:16px 18px;
+    border-top:1px solid {t['border']};
+    font-size:11px;line-height:1.7;
+    color:{t['text2']};">{DISCLAIMER_LONG}</div>""",
+    unsafe_allow_html=True
+)

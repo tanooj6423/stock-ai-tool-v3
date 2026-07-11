@@ -4,7 +4,7 @@ import streamlit as st
 import yfinance as yf
 from datetime import datetime
 
-WATCHLIST_FILE = "watchlist.json"
+from config import WATCHLIST_FILE
 
 def load_watchlist():
     try:

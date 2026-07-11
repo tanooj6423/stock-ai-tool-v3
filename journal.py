@@ -3,7 +3,7 @@ import os
 import streamlit as st
 from datetime import datetime, date
 
-JOURNAL_FILE = "trade_journal.json"
+from config import JOURNAL_FILE
 
 def load_journal():
     try:

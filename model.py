@@ -1,7 +1,6 @@
 import pandas as pd
 import numpy as np
 from xgboost import XGBClassifier
-from sklearn.ensemble import VotingClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import (accuracy_score,
@@ -11,7 +10,7 @@ from sklearn.calibration import CalibratedClassifierCV
 import streamlit as st
 from data import (get_stock_data, add_indicators,
                   get_nifty_data, add_market_features,
-                  get_india_vix, get_nse_delivery_data)
+                  get_india_vix)
 
 try:
     import lightgbm as lgb
@@ -38,6 +37,30 @@ ADVANCED_FEATURE_COLS = [
     "Beta_20d", "Rel_return_5d",
     "Nifty_momentum", "VIX_ratio"
 ]
+
+class SoftVoteEnsemble:
+    """
+    Weighted soft-voting over already-fitted models.
+    Unlike sklearn's VotingClassifier, it never refits
+    its members, so calibrated (prefit) models stay
+    calibrated.
+    """
+
+    def __init__(self, models, weights):
+        self.models = models
+        w = np.array(weights, dtype=float)
+        self.weights = w / w.sum()
+
+    def predict_proba(self, X):
+        proba = None
+        for m, w in zip(self.models, self.weights):
+            p = m.predict_proba(X) * w
+            proba = p if proba is None else proba + p
+        return proba
+
+    def predict(self, X):
+        return np.argmax(self.predict_proba(X), axis=1)
+
 
 def create_triple_barrier_target(
     df, horizon=7, pt_atr_mult=2.0,
@@ -296,18 +319,11 @@ def train_model(ticker):
         vix_df = get_india_vix()
         df = add_market_features(df, nifty_df, vix_df)
 
-        # Add delivery volume if available
-        delivery_pct = get_nse_delivery_data(ticker)
-        if delivery_pct is not None:
-            df["Delivery_pct"] = delivery_pct
-            # Delivery breakout flag
-            delivery_series = pd.Series(
-                [delivery_pct] * len(df),
-                index=df.index
-            )
-            df["Delivery_breakout"] = (
-                delivery_series > 0.5
-            ).astype(int)
+        # NOTE: delivery % intentionally excluded from
+        # training. get_nse_delivery_data returns a single
+        # recent value; broadcasting it across 5y of history
+        # created a constant (useless) feature. Reintroduce
+        # only with a proper per-date historical series.
 
         X, y, features = build_features(
             df, advanced=True
@@ -323,44 +339,71 @@ def train_model(ticker):
         if len(X_train) < 80 or len(X_test) < 20:
             return None, None, None, 0.5
 
+        # Carve a calibration slice from the TAIL of the
+        # training data (with embargo), so the test set
+        # stays untouched until final evaluation.
+        # Previously calibrators were fit on the test set,
+        # which inflated reported accuracy.
+        n_tr = len(X_train)
+        cal_size = max(30, int(n_tr * 0.15))
+        embargo = 7
+        fit_end = n_tr - cal_size - embargo
+
+        if fit_end < 60:
+            # Not enough data to calibrate separately —
+            # train without calibration.
+            cal_size = 0
+            fit_end = n_tr
+
+        X_fit = X_train.iloc[:fit_end]
+        y_fit = y_train.iloc[:fit_end]
+
         scaler = StandardScaler()
-        X_train_s = scaler.fit_transform(X_train)
+        X_fit_s = scaler.fit_transform(X_fit)
         X_test_s = scaler.transform(X_test)
 
-        neg = (y_train == 0).sum()
-        pos = (y_train == 1).sum()
+        neg = (y_fit == 0).sum()
+        pos = (y_fit == 1).sum()
         spw = neg / max(pos, 1)
 
-        # Build ensemble
-        estimators = []
+        def maybe_calibrate(base_model):
+            base_model.fit(X_fit_s, y_fit)
+            if cal_size == 0:
+                return base_model
+            X_cal = X_train.iloc[n_tr - cal_size:]
+            y_cal = y_train.iloc[n_tr - cal_size:]
+            # Calibration needs both classes present
+            if y_cal.nunique() < 2:
+                return base_model
+            X_cal_s = scaler.transform(X_cal)
+            cal = CalibratedClassifierCV(
+                base_model, cv="prefit",
+                method="isotonic"
+            )
+            cal.fit(X_cal_s, y_cal)
+            return cal
+
+        # Build prefit soft-voting ensemble.
+        # (sklearn's VotingClassifier.fit() would refit
+        # the calibrators on training data — avoided.)
+        models = []
+        weights = []
 
         if LGBM_AVAILABLE:
-            lgbm = get_lgbm_model(spw)
-            lgbm.fit(X_train_s, y_train)
-            cal_lgbm = CalibratedClassifierCV(
-                lgbm, cv="prefit", method="isotonic"
+            models.append(
+                maybe_calibrate(get_lgbm_model(spw))
             )
-            cal_lgbm.fit(X_test_s, y_test)
-            estimators.append(("lgbm", cal_lgbm))
+            weights.append(0.6)
 
-        xgb = get_xgb_model(spw)
-        xgb.fit(X_train_s, y_train)
-        cal_xgb = CalibratedClassifierCV(
-            xgb, cv="prefit", method="isotonic"
-        )
-        cal_xgb.fit(X_test_s, y_test)
-        estimators.append(("xgb", cal_xgb))
+        models.append(maybe_calibrate(get_xgb_model(spw)))
+        weights.append(0.4 if LGBM_AVAILABLE else 1.0)
 
-        if len(estimators) == 1:
-            final_model = estimators[0][1]
+        if len(models) == 1:
+            final_model = models[0]
         else:
-            final_model = VotingClassifier(
-                estimators=estimators,
-                voting="soft",
-                weights=[0.6, 0.4]
-                if LGBM_AVAILABLE else [1]
+            final_model = SoftVoteEnsemble(
+                models, weights
             )
-            final_model.fit(X_train_s, y_train)
 
         acc = accuracy_score(
             y_test,

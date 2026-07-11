@@ -1,0 +1,14 @@
+services:
+  equitex:
+    build: .
+    ports:
+      - "8501:8501"
+    env_file: .env
+    environment:
+      - DATA_DIR=/data
+    volumes:
+      - equitex_data:/data
+    restart: unless-stopped
+
+volumes:
+  equitex_data:

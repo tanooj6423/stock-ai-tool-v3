@@ -1,0 +1,14 @@
+.git
+.gitignore
+.env
+.claude
+__pycache__
+*.pyc
+*.pkl
+*.joblib
+data/
+crypto/
+trade_journal.json
+watchlist.json
+.DS_Store
+README.md

@@ -8,6 +8,7 @@ set -e
 cd "$(dirname "$0")"
 
 # Safety: refuse to run with uncommitted changes
+git update-index -q --refresh
 if ! git diff-index --quiet HEAD --; then
     echo "You have uncommitted changes. Commit them first."
     exit 1

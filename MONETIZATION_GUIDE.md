@@ -100,13 +100,15 @@ and it's your most fragile dependency.
 
 Right now models train on demand — slow and won't survive real traffic.
 
-9. ⬜ Create `nightly_scan.py`: after market close, train models and run
-   `run_full_scan` for the whole universe, write results to
-   `DATA_DIR/scan_results.json` (or the DB from Phase 5).
+9. ✅ `nightly_scan.py` built: precomputes the scan, logs every pick to
+   the forward track record, evaluates outcomes of past picks. The app
+   now serves precomputed results instantly (live scan only on Refresh).
 10. ⬜ Schedule it: `cron` on the VPS (`30 18 * * 1-5`) or Railway cron
-    service. The app then just reads the precomputed file — instant loads.
-11. ⬜ Start logging every nightly pick with timestamp — this becomes your
-    **public track record**, your single best marketing asset.
+    service. Until then you can run `python nightly_scan.py` manually
+    after market close.
+11. ✅ Forward pick logging + outcome evaluation built, with a new
+    **Track Record** tab in the app (win rate, avg return, cumulative
+    curve). This becomes your single best marketing asset.
 
 ---
 

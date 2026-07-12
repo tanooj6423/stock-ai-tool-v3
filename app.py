@@ -428,7 +428,11 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
+from scan_store import load_scan, save_scan, log_picks
+from track_record_tab import render_track_record_tab
+
+(tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8,
+ tab9) = st.tabs([
          "Daily Picks",
          "Morning Check",
          "Stock Analysis",
@@ -437,6 +441,7 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
          "Journal",
          "Settings",
          "🇺🇸 US Stocks",
+         "Track Record",
      ])
 
 with tab7:
@@ -543,40 +548,63 @@ with tab1:
     with top_row_r:
         run_scan = st.button("↺ Refresh", type="primary")
 
-    progress_bar = st.progress(0)
-    status_text = st.empty()
-    time_text = st.empty()
-    start_time = time.time()
-
-    def update_progress(current, total, current_ticker):
-        pct = int((current / total) * 100)
-        elapsed = time.time() - start_time
-        rate = elapsed / max(current, 1)
-        remaining = int(rate * (total - current))
-        mins = remaining // 60
-        secs = remaining % 60
-        progress_bar.progress(pct)
-        status_text.markdown(
-            f'<span style="font-size:12px;'
-            f'color:{t["text2"]};">'
-            f'Scanning '
-            f'{current_ticker.replace(".NS","")} '
-            f'({current}/{total})</span>',
-            unsafe_allow_html=True
-        )
-        time_text.markdown(
-            f'<span style="font-size:11px;'
-            f'color:{t["text2"]};">'
-            f'Est. remaining: {mins}m {secs}s</span>',
-            unsafe_allow_html=True
-        )
-
-    picks, regime = run_full_scan(
-        tuple(scan_tickers),
-        capital=capital,
-        risk_pct=risk_pct,
-        progress_callback=update_progress
+    # Serve the precomputed nightly scan when fresh;
+    # a live scan only runs on explicit Refresh or when
+    # no fresh precomputed results exist.
+    precomputed = None if run_scan else load_scan(
+        max_age_hours=20
     )
+
+    if precomputed:
+        picks, regime, scanned_at = precomputed
+        st.caption(
+            f"Precomputed scan · {scanned_at} · "
+            f"position sizing uses scan defaults — "
+            f"press ↺ Refresh for a live scan with "
+            f"your capital settings."
+        )
+    else:
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+        time_text = st.empty()
+        start_time = time.time()
+
+        def update_progress(current, total,
+                            current_ticker):
+            pct = int((current / total) * 100)
+            elapsed = time.time() - start_time
+            rate = elapsed / max(current, 1)
+            remaining = int(rate * (total - current))
+            mins = remaining // 60
+            secs = remaining % 60
+            progress_bar.progress(pct)
+            status_text.markdown(
+                f'<span style="font-size:12px;'
+                f'color:{t["text2"]};">'
+                f'Scanning '
+                f'{current_ticker.replace(".NS","")} '
+                f'({current}/{total})</span>',
+                unsafe_allow_html=True
+            )
+            time_text.markdown(
+                f'<span style="font-size:11px;'
+                f'color:{t["text2"]};">'
+                f'Est. remaining: {mins}m {secs}s</span>',
+                unsafe_allow_html=True
+            )
+
+        picks, regime = run_full_scan(
+            tuple(scan_tickers),
+            capital=capital,
+            risk_pct=risk_pct,
+            progress_callback=update_progress
+        )
+        progress_bar.empty()
+        status_text.empty()
+        time_text.empty()
+        save_scan(picks, regime,
+                  universe_name=scan_universe)
+        log_picks(picks)
 
     progress_bar.progress(100)
     status_text.empty()
@@ -1842,6 +1870,9 @@ with tab6:
 
 with tab8:
     render_us_stocks_tab(t, {"capital": capital, "risk_pct": risk_pct})
+
+with tab9:
+    render_track_record_tab(t)
 # ---------------------------------------------------------
 # Compliance footer (shown on every page)
 # ---------------------------------------------------------

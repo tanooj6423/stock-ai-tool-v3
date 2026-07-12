@@ -6,9 +6,20 @@ import streamlit as st
 import requests
 from datetime import datetime, timedelta, date
 from universe import SECTOR_INDICES
+from kite_data import (try_kite_history,
+                       try_kite_weekly)
+
+# Data source strategy:
+# 1. Kite Connect (licensed) whenever the owner's daily
+#    session is active — see kite_data.py.
+# 2. yfinance fallback so the app keeps working when the
+#    Kite token has expired or isn't configured.
 
 @st.cache_data(ttl=3600)
 def get_stock_data(ticker, period="2y"):
+    df = try_kite_history(ticker, period=period)
+    if df is not None and len(df) > 0:
+        return df
     try:
         df = yf.Ticker(ticker).history(period=period)
         if df is None or df.empty:
@@ -20,6 +31,9 @@ def get_stock_data(ticker, period="2y"):
 
 @st.cache_data(ttl=3600)
 def get_weekly_data(ticker):
+    df = try_kite_weekly(ticker, period="2y")
+    if df is not None and len(df) > 0:
+        return df
     try:
         df = yf.Ticker(ticker).history(
             period="2y", interval="1wk"
@@ -33,6 +47,9 @@ def get_weekly_data(ticker):
 
 @st.cache_data(ttl=3600)
 def get_nifty_data():
+    df = try_kite_history("^NSEI", period="5y")
+    if df is not None and len(df) > 50:
+        return df
     for ticker in ["^NSEI", "NIFTYBEES.NS", "HDFCBANK.NS"]:
         try:
             df = yf.Ticker(ticker).history(period="5y")
@@ -45,6 +62,9 @@ def get_nifty_data():
 
 @st.cache_data(ttl=3600)
 def get_india_vix():
+    df = try_kite_history("^INDIAVIX", period="2y")
+    if df is not None and len(df) > 0:
+        return df
     try:
         df = yf.Ticker("^INDIAVIX").history(period="2y")
         if df is None or df.empty:
@@ -56,6 +76,9 @@ def get_india_vix():
 
 @st.cache_data(ttl=3600)
 def get_sector_data(sector_ticker):
+    df = try_kite_history(sector_ticker, period="3mo")
+    if df is not None and len(df) > 0:
+        return df
     try:
         df = yf.Ticker(sector_ticker).history(period="3mo")
         if df is None or df.empty:

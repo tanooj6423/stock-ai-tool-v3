@@ -57,7 +57,16 @@ def generate_session(request_token):
             request_token,
             api_secret=get_api_secret()
         )
-        return data["access_token"]
+        token = data["access_token"]
+        # Persist as the app's data-layer token too, so
+        # one daily login also powers Kite-sourced data
+        # for all fetchers (see kite_data.py).
+        try:
+            from kite_data import save_owner_token
+            save_owner_token(token)
+        except Exception:
+            pass
+        return token
     except Exception as e:
         st.error(f"Zerodha login failed: {e}")
         return None
@@ -219,6 +228,16 @@ def render_zerodha_panel(t):
         unsafe_allow_html=True
     )
 
+    # Restore today's saved session (one login per day)
+    if not st.session_state.get("zerodha_token"):
+        try:
+            from kite_data import load_owner_token
+            saved = load_owner_token()
+            if saved:
+                st.session_state["zerodha_token"] = saved
+        except Exception:
+            pass
+
     params = st.query_params
     if "request_token" in params:
         request_token = params["request_token"]
@@ -229,6 +248,18 @@ def render_zerodha_panel(t):
                 st.session_state["zerodha_token"] = token
                 st.success("Connected to Zerodha")
                 st.rerun()
+
+    # Show which data source is active
+    try:
+        from kite_data import is_kite_data_active
+        src = (
+            "Kite Connect (licensed)"
+            if is_kite_data_active()
+            else "yfinance (fallback — dev only)"
+        )
+        st.caption(f"Market data source: {src}")
+    except Exception:
+        pass
 
     if is_connected():
         st.markdown(

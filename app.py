@@ -105,6 +105,15 @@ def hex_to_rgba(hex_color, alpha=0.1):
 st.markdown(f"""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+/* Hide Streamlit chrome so it looks like a product,
+   not a Streamlit demo */
+#MainMenu {{ visibility: hidden; }}
+footer {{ visibility: hidden; }}
+header[data-testid="stHeader"] {{
+    background: transparent; height: 0;
+}}
+div[data-testid="stToolbar"] {{ display: none; }}
+div[data-testid="stDecoration"] {{ display: none; }}
 html, body, [class*="css"] {{ font-family: 'Inter', sans-serif !important; }}
 .stApp {{ background-color: {t['bg']}; }}
 section[data-testid="stSidebar"] {{

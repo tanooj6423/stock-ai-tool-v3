@@ -1,0 +1,22 @@
+# Streamlit app configuration — production polish
+[server]
+headless = true
+
+[browser]
+gatherUsageStats = false
+
+[theme]
+# Matches the Koyfin Dark tokens in app.py so native
+# widgets (selectboxes, sliders, charts) blend in.
+base = "dark"
+primaryColor = "#6366f1"
+backgroundColor = "#0e1116"
+secondaryBackgroundColor = "#12161d"
+textColor = "#e8ecf3"
+font = "sans serif"
+
+[ui]
+hideTopBar = true
+
+[client]
+toolbarMode = "minimal"

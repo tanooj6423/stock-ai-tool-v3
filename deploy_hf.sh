@@ -26,6 +26,12 @@ git rm --cached -q deploy_hf.sh 2>/dev/null || true
 git rm --cached -q .env 2>/dev/null || true
 git rm -r --cached -q data 2>/dev/null || true
 
+# ...but DO ship the precomputed scan + track record so
+# the Space serves picks instantly (no live scan on load).
+# User accounts/journals (equitex.db, users/) stay local.
+git add -f data/scan_results.json 2>/dev/null || true
+git add -f data/track_record.json 2>/dev/null || true
+
 git commit -q -m "Deploy stock app snapshot $(date +%Y-%m-%d_%H:%M)"
 git push hf hf-deploy:main --force
 

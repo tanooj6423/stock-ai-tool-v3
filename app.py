@@ -660,24 +660,50 @@ with tab1:
             'AI screened daily picks</div>',
             unsafe_allow_html=True
         )
+    # Live rescans hammer the server (trains ~100
+    # models) — admin-only. Everyone else is always
+    # served the precomputed nightly scan.
+    run_scan = False
     with top_row_r:
-        run_scan = st.button("↺ Refresh", type="primary")
+        if auth.is_admin(user):
+            run_scan = st.button("↺ Rescan",
+                                 type="primary")
 
-    # Serve the precomputed nightly scan when fresh;
-    # a live scan only runs on explicit Refresh or when
-    # no fresh precomputed results exist.
-    precomputed = None if run_scan else load_scan(
-        max_age_hours=20
+    # Serve the freshest precomputed scan available.
+    # Weekends/holidays: yesterday's scan stays valid,
+    # so fall back up to 4 days before giving up.
+    precomputed = None if run_scan else (
+        load_scan(max_age_hours=20)
+        or load_scan(max_age_hours=96)
     )
 
     if precomputed:
         picks, regime, scanned_at = precomputed
         st.caption(
-            f"Precomputed scan · {scanned_at} · "
-            f"position sizing uses scan defaults — "
-            f"press ↺ Refresh for a live scan with "
-            f"your capital settings."
+            f"Model scan · {scanned_at} · refreshed "
+            f"after each market close"
         )
+    elif not run_scan:
+        # No precomputed results and not admin —
+        # never auto-run a 10-minute scan on a page
+        # load; show a friendly state instead.
+        st.markdown(f"""
+        <div style="text-align:center;padding:48px;
+        background:{t['card']};
+        border:1px solid {t['border']};
+        border-radius:12px;color:{t['text2']};">
+            <div style="font-size:15px;
+            font-weight:600;color:{t['text']};
+            margin-bottom:6px;">
+                Today's scan is being prepared
+            </div>
+            <div style="font-size:13px;">
+                Picks are computed after each market
+                close. Check back shortly.
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        picks, regime = [], "unknown"
     else:
         progress_bar = st.progress(0)
         status_text = st.empty()
@@ -721,17 +747,18 @@ with tab1:
                   universe_name=scan_universe)
         log_picks(picks)
 
-    progress_bar.progress(100)
-    status_text.empty()
-    time_text.empty()
-
     regime_icons = {
         "bull": "●", "bear": "●",
         "sideways": "●", "unknown": "○"
     }
     regime_icon = regime_icons.get(regime, "○")
 
-    st.markdown(f"""
+    scan_available = (
+        precomputed is not None or run_scan
+    )
+
+    if scan_available:
+        st.markdown(f"""
     <div class="status-row">
         <span class="status-item">Market &nbsp;
             <span class="regime-{regime}">
@@ -764,7 +791,7 @@ with tab1:
     </div>
     """, unsafe_allow_html=True)
 
-    if not picks:
+    if scan_available and not picks:
         st.markdown(f"""
         <div style="text-align:center;padding:48px;
         background:{t['card']};

@@ -96,23 +96,24 @@ def render_login_gate(t):
                 email2 = st.text_input("Email", key="su_email")
                 pw2 = st.text_input("Password (min 8 chars)",
                                     type="password", key="su_pw")
-                agree = st.checkbox(
-                    "I agree to the Terms of Service and understand "
-                    "this is a research tool, not investment advice.",
-                    key="su_agree"
+                st.markdown(
+                    f"<div style='font-size:11px;"
+                    f"color:{t['text2']};line-height:1.6;'>"
+                    "By creating an account you agree to the "
+                    "Terms of Service (see the Plans tab) and "
+                    "understand this is a research tool, not "
+                    "investment advice.</div>",
+                    unsafe_allow_html=True
                 )
                 ok2 = st.form_submit_button("Create free account",
                                             use_container_width=True)
             if ok2:
-                if not agree:
-                    st.error("Please accept the Terms of Service.")
+                created, msg = auth.create_user(email2, pw2)
+                if created:
+                    _login_user(auth.get_user(email2))
+                    st.rerun()
                 else:
-                    created, msg = auth.create_user(email2, pw2)
-                    if created:
-                        _login_user(auth.get_user(email2))
-                        st.rerun()
-                    else:
-                        st.error(msg)
+                    st.error(msg)
 
         st.markdown(f"""
         <div style="text-align:center;font-size:11px;

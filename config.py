@@ -28,6 +28,44 @@ JOURNAL_FILE = str(DATA_DIR / "trade_journal.json")
 WATCHLIST_FILE = str(DATA_DIR / "watchlist.json")
 
 
+def _user_scoped_file(base_name, legacy_path):
+    """
+    Per-user storage path. When someone is logged in,
+    their journal/watchlist live in
+    DATA_DIR/users/<hash-of-email>/<base_name> so users
+    never see each other's data. Falls back to the
+    legacy single-user file when there's no session
+    (dev mode with AUTH_DISABLED=1, cron scripts).
+    """
+    try:
+        import hashlib
+
+        import streamlit as st
+        email = st.session_state.get("user_email")
+        if email:
+            uid = hashlib.sha256(
+                email.strip().lower().encode()
+            ).hexdigest()[:16]
+            d = DATA_DIR / "users" / uid
+            d.mkdir(parents=True, exist_ok=True)
+            return str(d / base_name)
+    except Exception:
+        pass
+    return legacy_path
+
+
+def journal_file():
+    return _user_scoped_file(
+        "trade_journal.json", JOURNAL_FILE
+    )
+
+
+def watchlist_file():
+    return _user_scoped_file(
+        "watchlist.json", WATCHLIST_FILE
+    )
+
+
 # ---------------------------------------------------------
 # Secrets
 # ---------------------------------------------------------

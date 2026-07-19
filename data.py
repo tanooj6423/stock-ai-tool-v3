@@ -335,6 +335,61 @@ def add_indicators(df):
         except Exception:
             df["Expiry_week"] = 0
 
+        # --- v3.1 model features ---
+        # ADX: trend strength (distinguishes trending
+        # setups from chop — mean-reversion signals
+        # behave very differently in each)
+        try:
+            adx = ta.trend.ADXIndicator(
+                df["High"], df["Low"], df["Close"]
+            )
+            df["ADX"] = adx.adx()
+        except Exception:
+            df["ADX"] = 0.0
+
+        # MFI: volume-weighted RSI — catches
+        # accumulation/distribution divergences
+        try:
+            df["MFI"] = ta.volume.MFIIndicator(
+                df["High"], df["Low"], df["Close"],
+                df["Volume"]
+            ).money_flow_index()
+        except Exception:
+            df["MFI"] = 50.0
+
+        # OBV slope: 10-day change in on-balance
+        # volume, normalized by average volume
+        try:
+            obv = ta.volume.OnBalanceVolumeIndicator(
+                df["Close"], df["Volume"]
+            ).on_balance_volume()
+            df["OBV_slope"] = (
+                obv.diff(10) /
+                (df["Volume"].rolling(20).mean() * 10
+                 + 1e-9)
+            )
+        except Exception:
+            df["OBV_slope"] = 0.0
+
+        # Medium-term momentum (60d) — the classic
+        # momentum-factor lookback, missing between
+        # Return_20d and Price_pos_52w
+        df["Return_60d"] = df["Close"].pct_change(60)
+
+        # Distance below 52-week high (breakout /
+        # base-building context; 0 = at the high)
+        df["Dist_52w_high"] = (
+            (df["Close"] - high_52w) /
+            (high_52w + 1e-9)
+        )
+
+        # Downside deviation (20d) — penalizes
+        # crash-prone names that symmetric
+        # volatility treats the same as steady risers
+        neg_ret = df["Return"].where(df["Return"] < 0,
+                                     0.0)
+        df["Downside_vol"] = neg_ret.rolling(20).std()
+
         df.dropna(inplace=True)
         return df
     except Exception:

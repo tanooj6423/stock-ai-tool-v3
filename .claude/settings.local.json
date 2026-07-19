@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx impeccable *)",
+      "Read(//usr/local/bin/**)",
+      "Bash(brew list *)"
+    ]
+  }
+}

@@ -29,7 +29,10 @@ BASE_FEATURE_COLS = [
     "SMA_cross", "Price_to_SMA20", "Price_to_SMA200",
     "Volatility", "NATR", "Gap_pct",
     "Price_pos_52w", "Bullish_div",
-    "ATR_pct_rank", "Expiry_week"
+    "ATR_pct_rank", "Expiry_week",
+    # v3.1 additions
+    "ADX", "MFI", "OBV_slope",
+    "Return_60d", "Dist_52w_high", "Downside_vol"
 ]
 
 # Advanced features — require external market data
@@ -158,6 +161,29 @@ def purged_split(X, y, test_frac=0.25,
     y_test = y.iloc[split_emb:]
 
     return X_train, X_test, y_train, y_test
+
+
+def walk_forward_folds(n, n_folds=3, test_frac=0.15,
+                       embargo_days=7, min_train=100):
+    """
+    Expanding-window walk-forward folds with embargo.
+    Yields (train_idx_end, test_start, test_end).
+    Fold k trains on [0:e) and tests on
+    [e+embargo : e+embargo+test_len) — strictly
+    out-of-sample, in time order. A single terminal
+    split can get lucky/unlucky with one regime; the
+    averaged score is a far more honest estimate.
+    """
+    test_len = max(20, int(n * test_frac))
+    folds = []
+    for k in range(n_folds):
+        test_end = n - k * test_len
+        test_start = test_end - test_len
+        train_end = test_start - embargo_days
+        if train_end < min_train:
+            break
+        folds.append((train_end, test_start, test_end))
+    return folds[::-1]  # chronological order
 
 def get_lgbm_model(scale_pos_weight=1.0):
     if not LGBM_AVAILABLE:
@@ -331,6 +357,36 @@ def train_model(ticker):
         if X is None or len(X) < 100:
             return None, None, None, 0.5
 
+        # ---- Walk-forward evaluation (3 folds) ----
+        # Score the modelling recipe on 3 sequential
+        # out-of-sample windows, then fit the final
+        # model on all data (minus calibration tail).
+        fold_scores = []
+        for tr_end, te_start, te_end in \
+                walk_forward_folds(len(X)):
+            Xf_tr = X.iloc[:tr_end]
+            yf_tr = y.iloc[:tr_end]
+            Xf_te = X.iloc[te_start:te_end]
+            yf_te = y.iloc[te_start:te_end]
+            if yf_tr.nunique() < 2 or len(Xf_te) < 15:
+                continue
+            sc = StandardScaler()
+            Xf_tr_s = sc.fit_transform(Xf_tr)
+            Xf_te_s = sc.transform(Xf_te)
+            spw_f = (
+                (yf_tr == 0).sum() /
+                max((yf_tr == 1).sum(), 1)
+            )
+            m = (get_lgbm_model(spw_f)
+                 if LGBM_AVAILABLE
+                 else get_xgb_model(spw_f))
+            m.fit(Xf_tr_s, yf_tr)
+            pred_f = m.predict(Xf_te_s)
+            a = accuracy_score(yf_te, pred_f)
+            p = precision_score(yf_te, pred_f,
+                                zero_division=0)
+            fold_scores.append((a + p) / 2)
+
         X_train, X_test, y_train, y_test = (
             purged_split(X, y, test_frac=0.25,
                          embargo_days=7)
@@ -405,20 +461,22 @@ def train_model(ticker):
                 models, weights
             )
 
-        acc = accuracy_score(
-            y_test,
-            final_model.predict(X_test_s)
-        )
-        prec = precision_score(
-            y_test,
-            final_model.predict(X_test_s),
-            zero_division=0
-        )
+        pred_final = final_model.predict(X_test_s)
+        acc = accuracy_score(y_test, pred_final)
+        prec = precision_score(y_test, pred_final,
+                               zero_division=0)
+        terminal = float((acc + prec) / 2)
 
-        # Return accuracy weighted by precision
-        combined = round(
-            float((acc + prec) / 2), 3
-        )
+        # Blend the terminal-split score with the
+        # walk-forward average: multi-window estimate
+        # is more honest than any single split.
+        if fold_scores:
+            combined = round(
+                0.5 * terminal +
+                0.5 * float(np.mean(fold_scores)), 3
+            )
+        else:
+            combined = round(terminal, 3)
         return (
             final_model, scaler, features, combined
         )

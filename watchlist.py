@@ -4,12 +4,12 @@ import streamlit as st
 import yfinance as yf
 from datetime import datetime
 
-from config import WATCHLIST_FILE
+from config import watchlist_file
 
 def load_watchlist():
     try:
-        if os.path.exists(WATCHLIST_FILE):
-            with open(WATCHLIST_FILE, "r") as f:
+        if os.path.exists(watchlist_file()):
+            with open(watchlist_file(), "r") as f:
                 return json.load(f)
         return []
     except Exception:
@@ -17,18 +17,23 @@ def load_watchlist():
 
 def save_watchlist(items):
     try:
-        with open(WATCHLIST_FILE, "w") as f:
+        with open(watchlist_file(), "w") as f:
             json.dump(items, f, indent=2, default=str)
         return True
     except Exception:
         return False
 
 def add_to_watchlist(ticker, alert_price=None,
-                     notes="", direction="above"):
+                     notes="", direction="above",
+                     max_items=None):
     items = load_watchlist()
     existing = [i for i in items if i["ticker"] == ticker]
     if existing:
         return False, "Already in watchlist"
+    if max_items is not None and len(items) >= max_items:
+        return False, (f"Free plan is limited to {max_items} "
+                       f"watchlist stocks — upgrade to Pro for "
+                       f"unlimited.")
     items.append({
         "ticker": ticker,
         "added_date": str(datetime.now().date()),
@@ -106,7 +111,7 @@ def get_watchlist_prices():
             continue
     return results
 
-def render_watchlist_tab(t):
+def render_watchlist_tab(t, max_items=None):
     st.markdown(
         '<div class="section-label">My watchlist</div>',
         unsafe_allow_html=True
@@ -253,7 +258,8 @@ def render_watchlist_tab(t):
                     ticker,
                     alert_px if alert_px > 0 else None,
                     wf_notes,
-                    alert_dir
+                    alert_dir,
+                    max_items=max_items
                 )
                 if success:
                     st.success(f"Added {ticker}")

@@ -1,7 +1,7 @@
 #!/bin/bash
 # Deploy the stock app to the Hugging Face Space.
 # Takes a snapshot of the CURRENT folder contents (no git
-# history, no crypto/ binaries) and force-pushes it to the
+# history, no legacy binaries) and force-pushes it to the
 # Space. Your main branch and GitHub are never touched.
 # Usage:  ./deploy_hf.sh
 set -e
@@ -21,7 +21,6 @@ git reset -q
 
 # Stage everything, then strip what the Space must NOT get
 git add -A
-git rm -r --cached -q crypto 2>/dev/null || true
 git rm -r --cached -q .claude 2>/dev/null || true
 git rm --cached -q deploy_hf.sh 2>/dev/null || true
 git rm --cached -q .env 2>/dev/null || true

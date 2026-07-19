@@ -31,7 +31,6 @@ from watchlist import (render_watchlist_tab, add_to_watchlist,
 from broker import (render_zerodha_panel, get_live_quote,
                     is_connected, is_market_hours,
                     place_gtt_order)
-from tab_us_stocks import render_us_stocks_tab
 
 load_dotenv()
 
@@ -413,8 +412,116 @@ section[data-testid="stSidebar"] * {{ color: {t['text']} !important; }}
     color: {t['text2']}; text-transform: uppercase;
     letter-spacing: 2px; margin: 16px 0 8px 0;
 }}
+/* Secondary buttons: quiet outline pills */
+.stButton > button[kind="secondary"] {{
+    background: transparent !important;
+    color: {t['text']} !important;
+    border: 1px solid {t['border']} !important;
+    box-shadow: none !important;
+}}
+.stButton > button[kind="secondary"]:hover {{
+    border-color: rgba({t['accent_rgb']},0.6) !important;
+    color: {t['accent']} !important;
+    filter: none !important;
+}}
+/* Alerts (st.info / success / error / warning) */
+div[data-testid="stAlert"] {{
+    background: {t['card']} !important;
+    border: 1px solid {t['border']} !important;
+    border-radius: 10px !important;
+    color: {t['text']} !important;
+    font-size: 13px !important;
+}}
+div[data-testid="stAlert"] p {{
+    color: {t['text']} !important;
+    font-size: 13px !important;
+}}
+/* Dataframes / tables */
+div[data-testid="stDataFrame"] {{
+    border: 1px solid {t['border']} !important;
+    border-radius: 10px !important;
+    overflow: hidden !important;
+}}
+/* Forms */
+div[data-testid="stForm"] {{
+    background: {t['card']} !important;
+    border: 1px solid {t['border']} !important;
+    border-radius: 12px !important;
+    padding: 20px !important;
+}}
+/* Number inputs & sliders */
+.stNumberInput input {{
+    background: {t['bg2']} !important;
+    border: 1px solid {t['border']} !important;
+    color: {t['text']} !important;
+    border-radius: 8px !important;
+    font-size: 13px !important;
+}}
+.stSlider [data-baseweb="slider"] div[role="slider"] {{
+    background: {t['accent']} !important;
+    border-color: {t['accent']} !important;
+}}
+/* Checkboxes / radios */
+.stCheckbox p, .stRadio p {{
+    font-size: 13px !important;
+    color: {t['text']} !important;
+}}
+/* Expander header text */
+.stExpander summary p,
+.stExpander summary span {{
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    color: {t['text']} !important;
+    font-family: 'JetBrains Mono', monospace !important;
+}}
+.stExpander summary:hover {{
+    color: {t['accent']} !important;
+}}
+/* Thin themed scrollbars */
+::-webkit-scrollbar {{ width: 9px; height: 9px; }}
+::-webkit-scrollbar-track {{ background: {t['bg']}; }}
+::-webkit-scrollbar-thumb {{
+    background: {t['border']}; border-radius: 99px;
+}}
+::-webkit-scrollbar-thumb:hover {{
+    background: rgba({t['accent_rgb']},0.5);
+}}
+/* Text selection in brand color */
+::selection {{
+    background: rgba({t['accent_rgb']},0.3);
+}}
+/* Tab bar scrolls instead of wrapping on small screens */
+.stTabs [data-baseweb="tab-list"] {{
+    overflow-x: auto; flex-wrap: nowrap;
+    scrollbar-width: none;
+}}
+/* Link color */
+a, a:visited {{ color: {t['accent']} !important; }}
 </style>
 """, unsafe_allow_html=True)
+
+# ---------------------------------------------------------
+# Authentication gate — everything below requires login
+# ---------------------------------------------------------
+import auth
+from account_ui import (render_login_gate, render_pricing,
+                        render_account_panel,
+                        render_upgrade_nudge)
+
+user = render_login_gate(t)
+IS_PRO = auth.is_pro(user)
+plan_badge = (
+    f'<span style="background:rgba({t["accent_rgb"]},0.15);'
+    f'color:{t["accent"]};font-size:10px;font-weight:700;'
+    f'padding:3px 10px;border-radius:99px;'
+    f'letter-spacing:1px;">PRO</span>'
+    if IS_PRO else
+    f'<span style="background:{t["bg2"]};'
+    f'color:{t["text2"]};font-size:10px;font-weight:700;'
+    f'padding:3px 10px;border-radius:99px;'
+    f'border:1px solid {t["border"]};'
+    f'letter-spacing:1px;">FREE</span>'
+)
 
 st.markdown(f"""
 <div class="app-header">
@@ -425,14 +532,20 @@ st.markdown(f"""
         Research tool — not investment advice ·
         Not SEBI-registered
     </div>
+    <div style="margin-left:auto;display:flex;
+         align-items:center;gap:10px;">
+        {plan_badge}
+        <span style="font-size:11px;
+            color:{t['text2']};">{user['email']}</span>
+    </div>
 </div>
 """, unsafe_allow_html=True)
 
 from scan_store import load_scan, save_scan, log_picks
 from track_record_tab import render_track_record_tab
 
-(tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8,
- tab9) = st.tabs([
+(tab1, tab2, tab3, tab4, tab5, tab6, tab7,
+ tab9, tab10) = st.tabs([
          "Daily Picks",
          "Morning Check",
          "Stock Analysis",
@@ -440,11 +553,13 @@ from track_record_tab import render_track_record_tab
          "Watchlist",
          "Journal",
          "Settings",
-         "🇺🇸 US Stocks",
          "Track Record",
+         "Plans",
      ])
 
 with tab7:
+    render_account_panel(t, user)
+
     st.markdown(
         '<div class="section-label">Display</div>',
         unsafe_allow_html=True
@@ -665,7 +780,11 @@ with tab1:
         </div>
         """, unsafe_allow_html=True)
     else:
-        for i, pick in enumerate(picks):
+        visible_picks = (
+            picks if IS_PRO
+            else picks[:auth.FREE_PICKS_VISIBLE]
+        )
+        for i, pick in enumerate(visible_picks):
             score = pick["score"]
             signal = pick["signal"]
             display_signal = (
@@ -954,6 +1073,16 @@ with tab1:
                             else:
                                 st.error(msg)
 
+        if not IS_PRO and len(picks) > len(visible_picks):
+            hidden = len(picks) - len(visible_picks)
+            render_upgrade_nudge(
+                t,
+                f"{hidden} more ranked pick"
+                f"{'s' if hidden > 1 else ''} in today's scan. "
+                f"Upgrade to Pro (₹399/mo) to see the full "
+                f"ranked list — see the Plans tab."
+            )
+
 with tab2:
     st.markdown(
         '<div class="section-label">'
@@ -1123,33 +1252,59 @@ with tab3:
         else:
             ticker = NIFTY_50[0]
 
-    with st.spinner(""):
-        df = get_stock_data(ticker, period="2y")
-        if df is not None:
-            df = add_indicators(df)
-        fundamentals = get_fundamentals(ticker)
-        nifty_df = get_nifty_data()
-        correlation = (
-            get_nifty_correlation(df, nifty_df)
-            if df is not None and nifty_df is not None
-            else None
+    # ---- Free-tier quota: N distinct analyses/day ----
+    if "analyzed_today" not in st.session_state:
+        st.session_state.analyzed_today = set()
+    _new_ticker = ticker not in st.session_state.analyzed_today
+    _quota_blocked = (
+        not IS_PRO and _new_ticker
+        and not auth.can_analyze(user)
+    )
+
+    if _quota_blocked:
+        render_upgrade_nudge(
+            t,
+            f"You've used your "
+            f"{auth.FREE_ANALYSES_PER_DAY} free analyses "
+            f"today. Upgrade to Pro for unlimited stock "
+            f"analysis — see the Plans tab."
         )
-        rs = (
-            get_relative_strength(df, nifty_df)
-            if df is not None and nifty_df is not None
-            else None
-        )
-        regime = (
-            get_market_regime(nifty_df)
-            if nifty_df is not None else "unknown"
-        )
-        support_levels, resistance_levels = (
-            get_support_resistance(df)
-            if df is not None else ([], [])
-        )
+        df = None
+        fundamentals = nifty_df = correlation = rs = None
+        regime = "unknown"
+        support_levels, resistance_levels = [], []
+    else:
+        if _new_ticker:
+            auth.record_analysis(user)
+            st.session_state.analyzed_today.add(ticker)
+        with st.spinner(""):
+            df = get_stock_data(ticker, period="2y")
+            if df is not None:
+                df = add_indicators(df)
+            fundamentals = get_fundamentals(ticker)
+            nifty_df = get_nifty_data()
+            correlation = (
+                get_nifty_correlation(df, nifty_df)
+                if df is not None and nifty_df is not None
+                else None
+            )
+            rs = (
+                get_relative_strength(df, nifty_df)
+                if df is not None and nifty_df is not None
+                else None
+            )
+            regime = (
+                get_market_regime(nifty_df)
+                if nifty_df is not None else "unknown"
+            )
+            support_levels, resistance_levels = (
+                get_support_resistance(df)
+                if df is not None else ([], [])
+            )
 
     if df is None or df.empty:
-        st.error("Could not load data.")
+        if not _quota_blocked:
+            st.error("Could not load data.")
     else:
         live_quote = (
             get_live_quote(ticker)
@@ -1863,16 +2018,22 @@ with tab4:
         st.info("Install prophet to enable forecasting.")
 
 with tab5:
-    render_watchlist_tab(t)
+    render_watchlist_tab(
+        t,
+        max_items=None if IS_PRO
+        else auth.FREE_WATCHLIST_MAX
+    )
 
 with tab6:
     render_journal_tab(t)
 
-with tab8:
-    render_us_stocks_tab(t, {"capital": capital, "risk_pct": risk_pct})
-
 with tab9:
     render_track_record_tab(t)
+
+with tab10:
+    render_pricing(t, user)
+    from legal import render_legal_expanders
+    render_legal_expanders(t)
 # ---------------------------------------------------------
 # Compliance footer (shown on every page)
 # ---------------------------------------------------------

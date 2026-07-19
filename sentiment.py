@@ -3,7 +3,15 @@ import streamlit as st
 import requests
 import re
 from datetime import datetime, timedelta
-from transformers import pipeline
+
+# transformers/torch are heavy optional deps: FinBERT is
+# used when available, keyword scoring is the fallback.
+try:
+    from transformers import pipeline
+    TRANSFORMERS_AVAILABLE = True
+except Exception:
+    pipeline = None
+    TRANSFORMERS_AVAILABLE = False
 
 NEGATIVE_KEYWORDS = [
     "fraud", "scam", "investigation", "probe", "scandal", "lawsuit",
@@ -23,6 +31,11 @@ POSITIVE_KEYWORDS = [
 
 @st.cache_resource
 def load_finbert():
+    if not TRANSFORMERS_AVAILABLE:
+        raise RuntimeError(
+            "transformers not installed — "
+            "keyword fallback will be used"
+        )
     return pipeline(
         "text-classification",
         model="ProsusAI/finbert",

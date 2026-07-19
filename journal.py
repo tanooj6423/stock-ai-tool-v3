@@ -3,12 +3,12 @@ import os
 import streamlit as st
 from datetime import datetime, date
 
-from config import JOURNAL_FILE
+from config import journal_file
 
 def load_journal():
     try:
-        if os.path.exists(JOURNAL_FILE):
-            with open(JOURNAL_FILE, "r") as f:
+        if os.path.exists(journal_file()):
+            with open(journal_file(), "r") as f:
                 return json.load(f)
         return []
     except Exception:
@@ -16,7 +16,7 @@ def load_journal():
 
 def save_journal(trades):
     try:
-        with open(JOURNAL_FILE, "w") as f:
+        with open(journal_file(), "w") as f:
             json.dump(trades, f, indent=2, default=str)
         return True
     except Exception:

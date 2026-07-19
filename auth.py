@@ -85,6 +85,12 @@ def init_db():
             expires_at REAL NOT NULL
         );
         """)
+        # Migration: disclaimer acknowledgment timestamp
+        try:
+            c.execute("ALTER TABLE users ADD COLUMN "
+                      "disclaimer_ack TEXT")
+        except sqlite3.OperationalError:
+            pass  # column already exists
 
 
 init_db()
@@ -210,6 +216,17 @@ def is_pro(user) -> bool:
         except ValueError:
             return False
     return True
+
+
+def record_disclaimer_ack(email: str):
+    """Timestamped proof the user acknowledged the
+    research-tool disclaimer (kept for compliance)."""
+    with _conn() as c:
+        c.execute(
+            "UPDATE users SET disclaimer_ack=? WHERE email=?",
+            (datetime.utcnow().isoformat(),
+             email.strip().lower())
+        )
 
 
 def set_tier(email: str, tier: str, pro_until: str = None):

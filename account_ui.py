@@ -125,6 +125,113 @@ def render_login_gate(t):
 
 
 # ---------------------------------------------------------
+# First-login disclaimer acknowledgment
+# ---------------------------------------------------------
+def render_disclaimer_gate(t, user):
+    """
+    One-time acknowledgment screen after first login.
+    Stores a timestamp against the user — auditable
+    proof they were informed this is not advice.
+    """
+    if user.get("disclaimer_ack") or \
+            st.session_state.get("ack_done"):
+        return
+    _, mid, _ = st.columns([1, 1.6, 1])
+    with mid:
+        st.markdown(f"""
+        <div style="border:1px solid {t['border']};
+             border-radius:14px;padding:26px 28px;
+             background:{t['card']};margin-top:36px;">
+          <div style="font-size:16px;font-weight:700;
+               color:{t['text']};margin-bottom:12px;">
+            Before you start
+          </div>
+          <div style="font-size:13px;color:{t['text']};
+               line-height:1.9;">
+            Equitex is a <b>data analytics and research
+            platform</b>. Everything you'll see — scores,
+            probabilities, reference levels, scenarios —
+            is the statistical output of quantitative
+            models applied to historical market data.
+            <br><br>
+            • It is <b>not investment advice</b> and not
+            a recommendation to buy or sell anything.<br>
+            • Equitex is <b>not a SEBI-registered</b>
+            Research Analyst or Investment Adviser.<br>
+            • Past model performance does not guarantee
+            future results. Markets carry risk of loss.<br>
+            • Investment decisions are yours alone —
+            consult a SEBI-registered professional.
+          </div>
+        </div>
+        """, unsafe_allow_html=True)
+        st.markdown("")
+        if st.button("I understand — continue",
+                     use_container_width=True,
+                     type="primary"):
+            auth.record_disclaimer_ack(user["email"])
+            st.session_state["ack_done"] = True
+            st.rerun()
+    st.stop()
+
+
+# ---------------------------------------------------------
+# Staged progress with estimated time
+# ---------------------------------------------------------
+class StagedProgress:
+    """
+    Professional loading UX: a progress bar that walks
+    through named stages with a live estimated-time
+    readout, instead of an anonymous spinner.
+
+        prog = StagedProgress(t, [
+            ("Fetching 2y price history", 3),
+            ("Computing 41 indicators", 1),
+            ("Market context & levels", 3),
+        ])
+        prog.step(); ...work...; prog.step(); ...
+        prog.done()
+    """
+
+    def __init__(self, t, stages):
+        import time as _time
+        self._time = _time
+        self.t = t
+        self.stages = stages
+        self.total_est = sum(s[1] for s in stages) or 1
+        self.i = 0
+        self.start = _time.time()
+        self.bar = st.progress(0)
+        self.label = st.empty()
+
+    def step(self):
+        if self.i >= len(self.stages):
+            return
+        name, _ = self.stages[self.i]
+        done_est = sum(
+            s[1] for s in self.stages[:self.i]
+        )
+        pct = int(100 * done_est / self.total_est)
+        remaining = max(
+            1, round(self.total_est -
+                     (self._time.time() - self.start))
+        )
+        self.bar.progress(min(pct, 99))
+        self.label.markdown(
+            f'<span style="font-size:12px;'
+            f'color:{self.t["text2"]};">'
+            f'{name}&nbsp;·&nbsp;~{remaining}s '
+            f'remaining</span>',
+            unsafe_allow_html=True
+        )
+        self.i += 1
+
+    def done(self):
+        self.bar.empty()
+        self.label.empty()
+
+
+# ---------------------------------------------------------
 # Pricing / upgrade
 # ---------------------------------------------------------
 def render_pricing(t, user):

@@ -506,9 +506,12 @@ a, a:visited {{ color: {t['accent']} !important; }}
 import auth
 from account_ui import (render_login_gate, render_pricing,
                         render_account_panel,
-                        render_upgrade_nudge)
+                        render_upgrade_nudge,
+                        render_disclaimer_gate,
+                        StagedProgress)
 
 user = render_login_gate(t)
+render_disclaimer_gate(t, user)
 IS_PRO = auth.is_pro(user)
 plan_badge = (
     f'<span style="background:rgba({t["accent_rgb"]},0.15);'
@@ -546,14 +549,14 @@ from track_record_tab import render_track_record_tab
 
 (tab1, tab2, tab3, tab4, tab5, tab6, tab7,
  tab9, tab10) = st.tabs([
-         "Daily Picks",
-         "Morning Check",
+         "Screener",
+         "Level Check",
          "Stock Analysis",
-         "Price Forecast",
+         "Scenarios",
          "Watchlist",
          "Journal",
          "Settings",
-         "Track Record",
+         "Performance",
          "Plans",
      ])
 
@@ -657,7 +660,8 @@ with tab1:
     with top_row_l:
         st.markdown(
             '<div class="section-label">'
-            'AI screened daily picks</div>',
+            'Quantitative screen — '
+            'model-ranked setups</div>',
             unsafe_allow_html=True
         )
     # Live rescans hammer the server (trains ~100
@@ -695,10 +699,10 @@ with tab1:
             <div style="font-size:15px;
             font-weight:600;color:{t['text']};
             margin-bottom:6px;">
-                Today's scan is being prepared
+                Today's screen is being prepared
             </div>
             <div style="font-size:13px;">
-                Picks are computed after each market
+                The screen runs after each market
                 close. Check back shortly.
             </div>
         </div>
@@ -772,7 +776,7 @@ with tab1:
             </span>
         </span>
         <span style="color:{t['border']};">·</span>
-        <span class="status-item">Picks &nbsp;
+        <span class="status-item">Setups &nbsp;
             <span class="status-value"
             style="color:{t['accent']};">
                 {len(picks)}
@@ -799,7 +803,7 @@ with tab1:
         border-radius:8px;color:{t['text2']};">
             <div style="font-size:15px;font-weight:600;
             color:{t['text']};margin-bottom:6px;">
-                No picks today
+                No qualifying setups today
             </div>
             <div style="font-size:13px;">
                 No stocks passed all screening criteria.
@@ -1304,30 +1308,42 @@ with tab3:
         if _new_ticker:
             auth.record_analysis(user)
             st.session_state.analyzed_today.add(ticker)
-        with st.spinner(""):
-            df = get_stock_data(ticker, period="2y")
-            if df is not None:
-                df = add_indicators(df)
-            fundamentals = get_fundamentals(ticker)
-            nifty_df = get_nifty_data()
-            correlation = (
-                get_nifty_correlation(df, nifty_df)
-                if df is not None and nifty_df is not None
-                else None
-            )
-            rs = (
-                get_relative_strength(df, nifty_df)
-                if df is not None and nifty_df is not None
-                else None
-            )
-            regime = (
-                get_market_regime(nifty_df)
-                if nifty_df is not None else "unknown"
-            )
-            support_levels, resistance_levels = (
-                get_support_resistance(df)
-                if df is not None else ([], [])
-            )
+        prog = StagedProgress(t, [
+            ("Fetching 2 years of price history", 2),
+            ("Computing 41 technical indicators", 1),
+            ("Loading fundamentals", 2),
+            ("Benchmarking vs Nifty & VIX", 2),
+            ("Mapping support / resistance levels", 1),
+        ])
+        prog.step()
+        df = get_stock_data(ticker, period="2y")
+        prog.step()
+        if df is not None:
+            df = add_indicators(df)
+        prog.step()
+        fundamentals = get_fundamentals(ticker)
+        prog.step()
+        nifty_df = get_nifty_data()
+        correlation = (
+            get_nifty_correlation(df, nifty_df)
+            if df is not None and nifty_df is not None
+            else None
+        )
+        rs = (
+            get_relative_strength(df, nifty_df)
+            if df is not None and nifty_df is not None
+            else None
+        )
+        regime = (
+            get_market_regime(nifty_df)
+            if nifty_df is not None else "unknown"
+        )
+        prog.step()
+        support_levels, resistance_levels = (
+            get_support_resistance(df)
+            if df is not None else ([], [])
+        )
+        prog.done()
 
     if df is None or df.empty:
         if not _quota_blocked:
@@ -1682,14 +1698,23 @@ with tab3:
             'Model signal</div>',
             unsafe_allow_html=True
         )
-        with st.spinner(""):
-            model, scaler, features, accuracy = (
-                train_model(ticker)
-            )
-            signal, confidence, buy_prob, sell_prob = (
-                get_signal(model, scaler, df, features)
-            )
-            risk_metrics = get_risk_metrics(df)
+        prog2 = StagedProgress(t, [
+            ("Fetching 5 years of training data", 3),
+            ("Walk-forward validation (3 folds)", 6),
+            ("Training calibrated ensemble "
+             "(LightGBM + XGBoost)", 5),
+        ])
+        prog2.step()
+        prog2.step()
+        model, scaler, features, accuracy = (
+            train_model(ticker)
+        )
+        prog2.step()
+        signal, confidence, buy_prob, sell_prob = (
+            get_signal(model, scaler, df, features)
+        )
+        risk_metrics = get_risk_metrics(df)
+        prog2.done()
 
         sig_badge = (
             "badge-buy" if signal == "BUY"

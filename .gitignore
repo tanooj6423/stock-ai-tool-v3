@@ -1,5 +1,7 @@
 .env
-data/
+data/*
+!data/scan_results.json
+!data/track_record.json
 trade_journal.json
 watchlist.json
 __pycache__/

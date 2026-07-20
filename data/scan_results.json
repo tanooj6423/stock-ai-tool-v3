@@ -1,0 +1,1019 @@
+{
+ "generated_at": "2026-07-19T19:00:12",
+ "regime": "sideways",
+ "universe": "Nifty 50 + Next 50",
+ "picks": [
+  {
+   "ticker": "PERSISTENT.NS",
+   "sector": "IT",
+   "score": 71,
+   "signal": "BUY",
+   "confidence": 0.8964,
+   "buy_prob": 0.8964,
+   "accuracy": 0.478,
+   "price": 5183.9,
+   "rsi": 60.2,
+   "macd": 60.23,
+   "entry": 5183.9,
+   "stop_loss": 4990.6,
+   "target1": 5489.81,
+   "target2": 5605.4,
+   "rr1": 1.58,
+   "rr2": 2.18,
+   "risk_amount": 193.3,
+   "shares": 5,
+   "position_cost": 25919.5,
+   "capital_note": "",
+   "max_loss": 966.5,
+   "holding_days": 6,
+   "risk_level": "HIGH",
+   "signal_breakdown": [
+    {
+     "Factor": "RSI",
+     "Reading": "60.2",
+     "Status": "Neutral",
+     "Signal": "\ud83d\udfe2"
+    },
+    {
+     "Factor": "MACD",
+     "Reading": "60.23",
+     "Status": "Bullish crossover",
+     "Signal": "\ud83d\udfe2"
+    },
+    {
+     "Factor": "Trend (SMA)",
+     "Reading": "Below SMA200",
+     "Status": "Above SMA50 only",
+     "Signal": "\ud83d\udfe1"
+    },
+    {
+     "Factor": "Volume",
+     "Reading": "0.5x avg",
+     "Status": "Below average",
+     "Signal": "\ud83d\udd34"
+    },
+    {
+     "Factor": "Market regime",
+     "Reading": "SIDEWAYS",
+     "Status": "Neutral",
+     "Signal": "\ud83d\udfe1"
+    },
+    {
+     "Factor": "Rel. strength",
+     "Reading": "+5.3% vs Nifty",
+     "Status": "Outperforming",
+     "Signal": "\ud83d\udfe2"
+    },
+    {
+     "Factor": "Sentiment",
+     "Reading": "Neutral",
+     "Status": "Negative / stable",
+     "Signal": "\ud83d\udfe1"
+    }
+   ],
+   "key_drivers": [
+    "High-conviction signal at 90% model confidence",
+    "MACD bullish crossover with positive histogram",
+    "Outperforming Nifty 50 by 5.3% \u2014 relative strength leader"
+   ],
+   "div_message": "\u26a0\ufe0f Dividend ex-date in 8 days. Plan exit before then.",
+   "div_days": 8,
+   "earnings_message": "Results in 14 days",
+   "earnings_days": 14,
+   "earnings_risk": "low",
+   "fii_bearish": false,
+   "fii_selling_days": 0,
+   "sentiment": "neutral",
+   "sent_conf": 0.0,
+   "sentiment_score": 0,
+   "sentiment_trend": "stable",
+   "correlation": 0.402,
+   "relative_strength": 5.32,
+   "market_regime": "sideways",
+   "pct_from_52w_high": 21.2,
+   "sharpe": 0.05,
+   "max_drawdown": "-34.3%",
+   "score_breakdown": {
+    "ML Signal": "20/20",
+    "Multi-TF": "8/15",
+    "Volume": "2/10",
+    "Regime": "5/10",
+    "Rel. Strength": "8/10",
+    "Sector": "8/8",
+    "Fundamentals": "5/8",
+    "Sentiment": "3/8",
+    "Fibonacci": "5/5",
+    "Institutional": "7/10"
+   }
+  },
+  {
+   "ticker": "COFORGE.NS",
+   "sector": "IT",
+   "score": 64,
+   "signal": "BUY",
+   "confidence": 0.9715,
+   "buy_prob": 0.9715,
+   "accuracy": 0.449,
+   "price": 1508.4,
+   "rsi": 55.2,
+   "macd": 26.88,
+   "entry": 1508.4,
+   "stop_loss": 1362.2,
+   "target1": 1737.75,
+   "target2": 1947.0,
+   "rr1": 1.57,
+   "rr2": 3.0,
+   "risk_amount": 146.2,
+   "shares": 6,
+   "position_cost": 9050.4,
+   "capital_note": "",
+   "max_loss": 877.2,
+   "holding_days": 6,
+   "risk_level": "HIGH",
+   "signal_breakdown": [
+    {
+     "Factor": "RSI",
+     "Reading": "55.2",
+     "Status": "Neutral",
+     "Signal": "\ud83d\udfe2"
+    },
+    {
+     "Factor": "MACD",
+     "Reading": "26.88",
+     "Status": "Bullish crossover",
+     "Signal": "\ud83d\udfe2"
+    },
+    {
+     "Factor": "Trend (SMA)",
+     "Reading": "Below SMA200",
+     "Status": "Above SMA50 only",
+     "Signal": "\ud83d\udfe1"
+    },
+    {
+     "Factor": "Volume",
+     "Reading": "0.9x avg",
+     "Status": "Below average",
+     "Signal": "\ud83d\udd34"
+    },
+    {
+     "Factor": "Market regime",
+     "Reading": "SIDEWAYS",
+     "Status": "Neutral",
+     "Signal": "\ud83d\udfe1"
+    },
+    {
+     "Factor": "Rel. strength",
+     "Reading": "+0.3% vs Nifty",
+     "Status": "Outperforming",
+     "Signal": "\ud83d\udfe1"
+    },
+    {
+     "Factor": "Sentiment",
+     "Reading": "Neutral",
+     "Status": "Negative / stable",
+     "Signal": "\ud83d\udfe1"
+    }
+   ],
+   "key_drivers": [
+    "High-conviction signal at 97% model confidence",
+    "MACD bullish crossover with positive histogram"
+   ],
+   "div_message": "",
+   "div_days": null,
+   "earnings_message": "Results in 8 days",
+   "earnings_days": 8,
+   "earnings_risk": "low",
+   "fii_bearish": false,
+   "fii_selling_days": 0,
+   "sentiment": "neutral",
+   "sent_conf": 0.0,
+   "sentiment_score": 0,
+   "sentiment_trend": "stable",
+   "correlation": 0.42,
+   "relative_strength": 0.31,
+   "market_regime": "sideways",
+   "pct_from_52w_high": 24.0,
+   "sharpe": 0.14,
+   "max_drawdown": "-45.6%",
+   "score_breakdown": {
+    "ML Signal": "20/20",
+    "Multi-TF": "4/15",
+    "Volume": "4/10",
+    "Regime": "5/10",
+    "Rel. Strength": "6/10",
+    "Sector": "8/8",
+    "Fundamentals": "5/8",
+    "Sentiment": "3/8",
+    "Fibonacci": "2/5",
+    "Institutional": "7/10"
+   }
+  },
+  {
+   "ticker": "IOC.NS",
+   "sector": "Energy",
+   "score": 61,
+   "signal": "BUY",
+   "confidence": 0.9739,
+   "buy_prob": 0.9739,
+   "accuracy": 0.348,
+   "price": 141.69,
+   "rsi": 52.1,
+   "macd": -0.34,
+   "entry": 141.69,
+   "stop_loss": 135.43,
+   "target1": 148.34,
+   "target2": 160.48,
+   "rr1": 1.06,
+   "rr2": 3.0,
+   "risk_amount": 6.26,
+   "shares": 159,
+   "position_cost": 22528.71,
+   "capital_note": "",
+   "max_loss": 995.34,
+   "holding_days": 6,
+   "risk_level": "MEDIUM",
+   "signal_breakdown": [
+    {
+     "Factor": "RSI",
+     "Reading": "52.1",
+     "Status": "Neutral",
+     "Signal": "\ud83d\udfe2"
+    },
+    {
+     "Factor": "MACD",
+     "Reading": "-0.34",
+     "Status": "Bearish / weak",
+     "Signal": "\ud83d\udd34"
+    },
+    {
+     "Factor": "Trend (SMA)",
+     "Reading": "Below SMA200",
+     "Status": "Above SMA50 only",
+     "Signal": "\ud83d\udfe1"
+    },
+    {
+     "Factor": "Volume",
+     "Reading": "0.8x avg",
+     "Status": "Below average",
+     "Signal": "\ud83d\udd34"
+    },
+    {
+     "Factor": "Market regime",
+     "Reading": "SIDEWAYS",
+     "Status": "Neutral",
+     "Signal": "\ud83d\udfe1"
+    },
+    {
+     "Factor": "Rel. strength",
+     "Reading": "-3.2% vs Nifty",
+     "Status": "Underperforming",
+     "Signal": "\ud83d\udd34"
+    },
+    {
+     "Factor": "Sentiment",
+     "Reading": "Neutral",
+     "Status": "Negative / stable",
+     "Signal": "\ud83d\udfe1"
+    }
+   ],
+   "key_drivers": [
+    "High-conviction signal at 97% model confidence",
+    "RSI at 52 \u2014 not overbought, room to run"
+   ],
+   "div_message": "",
+   "div_days": null,
+   "earnings_message": "Results in 12 days",
+   "earnings_days": 12,
+   "earnings_risk": "low",
+   "fii_bearish": false,
+   "fii_selling_days": 0,
+   "sentiment": "neutral",
+   "sent_conf": 0.0,
+   "sentiment_score": 0,
+   "sentiment_trend": "stable",
+   "correlation": 0.571,
+   "relative_strength": -3.2,
+   "market_regime": "sideways",
+   "pct_from_52w_high": 24.1,
+   "sharpe": 0.36,
+   "max_drawdown": "-28.8%",
+   "score_breakdown": {
+    "ML Signal": "20/20",
+    "Multi-TF": "8/15",
+    "Volume": "3/10",
+    "Regime": "5/10",
+    "Rel. Strength": "3/10",
+    "Sector": "1/8",
+    "Fundamentals": "3/8",
+    "Sentiment": "3/8",
+    "Fibonacci": "5/5",
+    "Institutional": "10/10"
+   }
+  },
+  {
+   "ticker": "M&M.NS",
+   "sector": "Auto",
+   "score": 57,
+   "signal": "BUY",
+   "confidence": 0.6416,
+   "buy_prob": 0.6416,
+   "accuracy": 0.725,
+   "price": 3179.2,
+   "rsi": 57.1,
+   "macd": 18.77,
+   "entry": 3179.2,
+   "stop_loss": 3038.08,
+   "target1": 3461.44,
+   "target2": 3602.56,
+   "rr1": 2.0,
+   "rr2": 3.0,
+   "risk_amount": 141.12,
+   "shares": 7,
+   "position_cost": 22254.4,
+   "capital_note": "",
+   "max_loss": 987.84,
+   "holding_days": 4,
+   "risk_level": "HIGH",
+   "signal_breakdown": [
+    {
+     "Factor": "RSI",
+     "Reading": "57.1",
+     "Status": "Neutral",
+     "Signal": "\ud83d\udfe2"
+    },
+    {
+     "Factor": "MACD",
+     "Reading": "18.77",
+     "Status": "Bullish crossover",
+     "Signal": "\ud83d\udfe2"
+    },
+    {
+     "Factor": "Trend (SMA)",
+     "Reading": "Below SMA200",
+     "Status": "Above SMA50 only",
+     "Signal": "\ud83d\udfe1"
+    },
+    {
+     "Factor": "Volume",
+     "Reading": "0.6x avg",
+     "Status": "Below average",
+     "Signal": "\ud83d\udd34"
+    },
+    {
+     "Factor": "Market regime",
+     "Reading": "SIDEWAYS",
+     "Status": "Neutral",
+     "Signal": "\ud83d\udfe1"
+    },
+    {
+     "Factor": "Rel. strength",
+     "Reading": "+3.5% vs Nifty",
+     "Status": "Outperforming",
+     "Signal": "\ud83d\udfe2"
+    },
+    {
+     "Factor": "Sentiment",
+     "Reading": "Neutral",
+     "Status": "Negative / stable",
+     "Signal": "\ud83d\udfe1"
+    }
+   ],
+   "key_drivers": [
+    "MACD bullish crossover with positive histogram"
+   ],
+   "div_message": "",
+   "div_days": null,
+   "earnings_message": "Results in 11 days",
+   "earnings_days": 11,
+   "earnings_risk": "low",
+   "fii_bearish": false,
+   "fii_selling_days": 0,
+   "sentiment": "neutral",
+   "sent_conf": 0.0,
+   "sentiment_score": 0,
+   "sentiment_trend": "stable",
+   "correlation": 0.713,
+   "relative_strength": 3.53,
+   "market_regime": "sideways",
+   "pct_from_52w_high": 16.3,
+   "sharpe": 0.34,
+   "max_drawdown": "-22.9%",
+   "score_breakdown": {
+    "ML Signal": "14/20",
+    "Multi-TF": "8/15",
+    "Volume": "2/10",
+    "Regime": "5/10",
+    "Rel. Strength": "6/10",
+    "Sector": "4/8",
+    "Fundamentals": "6/8",
+    "Sentiment": "3/8",
+    "Fibonacci": "5/5",
+    "Institutional": "4/10"
+   }
+  },
+  {
+   "ticker": "GODREJCP.NS",
+   "sector": "FMCG",
+   "score": 56,
+   "signal": "BUY",
+   "confidence": 0.8936,
+   "buy_prob": 0.8936,
+   "accuracy": 0.652,
+   "price": 1071.9,
+   "rsi": 55.9,
+   "macd": 10.54,
+   "entry": 1071.9,
+   "stop_loss": 1023.7,
+   "target1": 1142.32,
+   "target2": 1216.51,
+   "rr1": 1.46,
+   "rr2": 3.0,
+   "risk_amount": 48.2,
+   "shares": 20,
+   "position_cost": 21438.0,
+   "capital_note": "",
+   "max_loss": 964.0,
+   "holding_days": 5,
+   "risk_level": "MEDIUM",
+   "signal_breakdown": [
+    {
+     "Factor": "RSI",
+     "Reading": "55.9",
+     "Status": "Neutral",
+     "Signal": "\ud83d\udfe2"
+    },
+    {
+     "Factor": "MACD",
+     "Reading": "10.54",
+     "Status": "Bearish / weak",
+     "Signal": "\ud83d\udfe1"
+    },
+    {
+     "Factor": "Trend (SMA)",
+     "Reading": "Below SMA200",
+     "Status": "Above SMA50 only",
+     "Signal": "\ud83d\udfe1"
+    },
+    {
+     "Factor": "Volume",
+     "Reading": "0.4x avg",
+     "Status": "Below average",
+     "Signal": "\ud83d\udd34"
+    },
+    {
+     "Factor": "Market regime",
+     "Reading": "SIDEWAYS",
+     "Status": "Neutral",
+     "Signal": "\ud83d\udfe1"
+    },
+    {
+     "Factor": "Rel. strength",
+     "Reading": "+3.8% vs Nifty",
+     "Status": "Outperforming",
+     "Signal": "\ud83d\udfe2"
+    },
+    {
+     "Factor": "Sentiment",
+     "Reading": "Neutral",
+     "Status": "Negative / stable",
+     "Signal": "\ud83d\udfe1"
+    }
+   ],
+   "key_drivers": [
+    "High-conviction signal at 89% model confidence"
+   ],
+   "div_message": "",
+   "div_days": null,
+   "earnings_message": "Results in 19 days",
+   "earnings_days": 19,
+   "earnings_risk": "low",
+   "fii_bearish": false,
+   "fii_selling_days": 0,
+   "sentiment": "neutral",
+   "sent_conf": 0.0,
+   "sentiment_score": 0,
+   "sentiment_trend": "stable",
+   "correlation": 0.447,
+   "relative_strength": 3.8,
+   "market_regime": "sideways",
+   "pct_from_52w_high": 17.0,
+   "sharpe": -0.32,
+   "max_drawdown": "-23.2%",
+   "score_breakdown": {
+    "ML Signal": "20/20",
+    "Multi-TF": "8/15",
+    "Volume": "2/10",
+    "Regime": "5/10",
+    "Rel. Strength": "6/10",
+    "Sector": "1/8",
+    "Fundamentals": "2/8",
+    "Sentiment": "3/8",
+    "Fibonacci": "5/5",
+    "Institutional": "4/10"
+   }
+  },
+  {
+   "ticker": "COLPAL.NS",
+   "sector": "FMCG",
+   "score": 55,
+   "signal": "BUY",
+   "confidence": 0.7478,
+   "buy_prob": 0.7478,
+   "accuracy": 0.652,
+   "price": 2042.4,
+   "rsi": 51.6,
+   "macd": -3.32,
+   "entry": 2042.4,
+   "stop_loss": 2009.31,
+   "target1": 2086.6,
+   "target2": 2136.5,
+   "rr1": 1.05,
+   "rr2": 2.24,
+   "risk_amount": 41.95,
+   "shares": 30,
+   "position_cost": 61272.0,
+   "capital_note": "",
+   "max_loss": 1258.5,
+   "holding_days": 5,
+   "risk_level": "MEDIUM",
+   "signal_breakdown": [
+    {
+     "Factor": "RSI",
+     "Reading": "51.6",
+     "Status": "Neutral",
+     "Signal": "\ud83d\udfe2"
+    },
+    {
+     "Factor": "MACD",
+     "Reading": "-3.32",
+     "Status": "Bearish / weak",
+     "Signal": "\ud83d\udd34"
+    },
+    {
+     "Factor": "Trend (SMA)",
+     "Reading": "Below SMA200",
+     "Status": "Below key averages",
+     "Signal": "\ud83d\udd34"
+    },
+    {
+     "Factor": "Volume",
+     "Reading": "1.3x avg",
+     "Status": "Confirming move",
+     "Signal": "\ud83d\udfe1"
+    },
+    {
+     "Factor": "Market regime",
+     "Reading": "SIDEWAYS",
+     "Status": "Neutral",
+     "Signal": "\ud83d\udfe1"
+    },
+    {
+     "Factor": "Rel. strength",
+     "Reading": "+1.7% vs Nifty",
+     "Status": "Outperforming",
+     "Signal": "\ud83d\udfe1"
+    },
+    {
+     "Factor": "Sentiment",
+     "Reading": "Neutral",
+     "Status": "Negative / stable",
+     "Signal": "\ud83d\udfe1"
+    }
+   ],
+   "key_drivers": [
+    "RSI at 52 \u2014 not overbought, room to run"
+   ],
+   "div_message": "",
+   "div_days": null,
+   "earnings_message": "Results in 10 days",
+   "earnings_days": 10,
+   "earnings_risk": "low",
+   "fii_bearish": false,
+   "fii_selling_days": 0,
+   "sentiment": "neutral",
+   "sent_conf": 0.0,
+   "sentiment_score": 0.0,
+   "sentiment_trend": "stable",
+   "correlation": 0.451,
+   "relative_strength": 1.71,
+   "market_regime": "sideways",
+   "pct_from_52w_high": 16.6,
+   "sharpe": -0.56,
+   "max_drawdown": "-32.6%",
+   "score_breakdown": {
+    "ML Signal": "17/20",
+    "Multi-TF": "4/15",
+    "Volume": "6/10",
+    "Regime": "5/10",
+    "Rel. Strength": "6/10",
+    "Sector": "1/8",
+    "Fundamentals": "4/8",
+    "Sentiment": "3/8",
+    "Fibonacci": "5/5",
+    "Institutional": "4/10"
+   }
+  },
+  {
+   "ticker": "PNB.NS",
+   "sector": "Banking",
+   "score": 53,
+   "signal": "BUY",
+   "confidence": 0.6734,
+   "buy_prob": 0.6734,
+   "accuracy": 0.638,
+   "price": 105.77,
+   "rsi": 51.0,
+   "macd": -0.12,
+   "entry": 105.77,
+   "stop_loss": 101.48,
+   "target1": 110.2,
+   "target2": 118.63,
+   "rr1": 1.03,
+   "rr2": 3.0,
+   "risk_amount": 4.29,
+   "shares": 233,
+   "position_cost": 24644.41,
+   "capital_note": "",
+   "max_loss": 999.57,
+   "holding_days": 4,
+   "risk_level": "MEDIUM",
+   "signal_breakdown": [
+    {
+     "Factor": "RSI",
+     "Reading": "51.0",
+     "Status": "Neutral",
+     "Signal": "\ud83d\udfe2"
+    },
+    {
+     "Factor": "MACD",
+     "Reading": "-0.12",
+     "Status": "Bearish / weak",
+     "Signal": "\ud83d\udd34"
+    },
+    {
+     "Factor": "Trend (SMA)",
+     "Reading": "Below SMA200",
+     "Status": "Above SMA50 only",
+     "Signal": "\ud83d\udfe1"
+    },
+    {
+     "Factor": "Volume",
+     "Reading": "0.9x avg",
+     "Status": "Below average",
+     "Signal": "\ud83d\udd34"
+    },
+    {
+     "Factor": "Market regime",
+     "Reading": "SIDEWAYS",
+     "Status": "Neutral",
+     "Signal": "\ud83d\udfe1"
+    },
+    {
+     "Factor": "Rel. strength",
+     "Reading": "-5.0% vs Nifty",
+     "Status": "Underperforming",
+     "Signal": "\ud83d\udd34"
+    },
+    {
+     "Factor": "Sentiment",
+     "Reading": "Neutral",
+     "Status": "Negative / stable",
+     "Signal": "\ud83d\udfe1"
+    }
+   ],
+   "key_drivers": [
+    "RSI at 51 \u2014 not overbought, room to run"
+   ],
+   "div_message": "",
+   "div_days": null,
+   "earnings_message": "",
+   "earnings_days": null,
+   "earnings_risk": "none",
+   "fii_bearish": false,
+   "fii_selling_days": 0,
+   "sentiment": "neutral",
+   "sent_conf": 0.0,
+   "sentiment_score": 0,
+   "sentiment_trend": "stable",
+   "correlation": 0.629,
+   "relative_strength": -5.01,
+   "market_regime": "sideways",
+   "pct_from_52w_high": 19.5,
+   "sharpe": 0.77,
+   "max_drawdown": "-24.8%",
+   "score_breakdown": {
+    "ML Signal": "15/20",
+    "Multi-TF": "4/15",
+    "Volume": "4/10",
+    "Regime": "5/10",
+    "Rel. Strength": "0/10",
+    "Sector": "4/8",
+    "Fundamentals": "6/8",
+    "Sentiment": "3/8",
+    "Fibonacci": "5/5",
+    "Institutional": "7/10"
+   }
+  },
+  {
+   "ticker": "NMDC.NS",
+   "sector": "Metals",
+   "score": 50,
+   "signal": "BUY",
+   "confidence": 0.9816,
+   "buy_prob": 0.9816,
+   "accuracy": 0.565,
+   "price": 83.22,
+   "rsi": 37.6,
+   "macd": -1.14,
+   "entry": 83.22,
+   "stop_loss": 79.51,
+   "target1": 90.65,
+   "target2": 94.36,
+   "rr1": 2.0,
+   "rr2": 3.0,
+   "risk_amount": 3.71,
+   "shares": 269,
+   "position_cost": 22386.18,
+   "capital_note": "",
+   "max_loss": 997.99,
+   "holding_days": 7,
+   "risk_level": "MEDIUM",
+   "signal_breakdown": [
+    {
+     "Factor": "RSI",
+     "Reading": "37.6",
+     "Status": "Neutral",
+     "Signal": "\ud83d\udfe1"
+    },
+    {
+     "Factor": "MACD",
+     "Reading": "-1.14",
+     "Status": "Bearish / weak",
+     "Signal": "\ud83d\udd34"
+    },
+    {
+     "Factor": "Trend (SMA)",
+     "Reading": "Above all SMAs",
+     "Status": "Below key averages",
+     "Signal": "\ud83d\udd34"
+    },
+    {
+     "Factor": "Volume",
+     "Reading": "1.0x avg",
+     "Status": "Below average",
+     "Signal": "\ud83d\udfe1"
+    },
+    {
+     "Factor": "Market regime",
+     "Reading": "SIDEWAYS",
+     "Status": "Neutral",
+     "Signal": "\ud83d\udfe1"
+    },
+    {
+     "Factor": "Rel. strength",
+     "Reading": "-7.0% vs Nifty",
+     "Status": "Underperforming",
+     "Signal": "\ud83d\udd34"
+    },
+    {
+     "Factor": "Sentiment",
+     "Reading": "Neutral",
+     "Status": "Negative / stable",
+     "Signal": "\ud83d\udfe1"
+    }
+   ],
+   "key_drivers": [
+    "High-conviction signal at 98% model confidence"
+   ],
+   "div_message": "",
+   "div_days": null,
+   "earnings_message": "",
+   "earnings_days": null,
+   "earnings_risk": "none",
+   "fii_bearish": false,
+   "fii_selling_days": 0,
+   "sentiment": "neutral",
+   "sent_conf": 0.0,
+   "sentiment_score": 0,
+   "sentiment_trend": "stable",
+   "correlation": 0.464,
+   "relative_strength": -6.97,
+   "market_regime": "sideways",
+   "pct_from_52w_high": 14.6,
+   "sharpe": 1.08,
+   "max_drawdown": "-13.3%",
+   "score_breakdown": {
+    "ML Signal": "20/20",
+    "Multi-TF": "4/15",
+    "Volume": "4/10",
+    "Regime": "5/10",
+    "Rel. Strength": "0/10",
+    "Sector": "1/8",
+    "Fundamentals": "6/8",
+    "Sentiment": "3/8",
+    "Fibonacci": "5/5",
+    "Institutional": "2/10"
+   }
+  },
+  {
+   "ticker": "ICICIGI.NS",
+   "sector": "Finance",
+   "score": 49,
+   "signal": "BUY",
+   "confidence": 0.6295,
+   "buy_prob": 0.6295,
+   "accuracy": 0.725,
+   "price": 1612.2,
+   "rsi": 30.2,
+   "macd": -22.1,
+   "entry": 1612.2,
+   "stop_loss": 1440.05,
+   "target1": 1855.75,
+   "target2": 2128.65,
+   "rr1": 1.41,
+   "rr2": 3.0,
+   "risk_amount": 172.15,
+   "shares": 5,
+   "position_cost": 8061.0,
+   "capital_note": "",
+   "max_loss": 860.75,
+   "holding_days": 5,
+   "risk_level": "HIGH",
+   "signal_breakdown": [
+    {
+     "Factor": "RSI",
+     "Reading": "30.2",
+     "Status": "Neutral",
+     "Signal": "\ud83d\udfe1"
+    },
+    {
+     "Factor": "MACD",
+     "Reading": "-22.10",
+     "Status": "Bearish / weak",
+     "Signal": "\ud83d\udd34"
+    },
+    {
+     "Factor": "Trend (SMA)",
+     "Reading": "Below SMA200",
+     "Status": "Below key averages",
+     "Signal": "\ud83d\udd34"
+    },
+    {
+     "Factor": "Volume",
+     "Reading": "2.8x avg",
+     "Status": "Confirming move",
+     "Signal": "\ud83d\udfe2"
+    },
+    {
+     "Factor": "Market regime",
+     "Reading": "SIDEWAYS",
+     "Status": "Neutral",
+     "Signal": "\ud83d\udfe1"
+    },
+    {
+     "Factor": "Rel. strength",
+     "Reading": "-14.7% vs Nifty",
+     "Status": "Underperforming",
+     "Signal": "\ud83d\udd34"
+    },
+    {
+     "Factor": "Sentiment",
+     "Reading": "Neutral",
+     "Status": "Negative / stable",
+     "Signal": "\ud83d\udfe1"
+    }
+   ],
+   "key_drivers": [
+    "Volume 2.8x above average \u2014 institutional confirmation"
+   ],
+   "div_message": "",
+   "div_days": null,
+   "earnings_message": "",
+   "earnings_days": null,
+   "earnings_risk": "none",
+   "fii_bearish": false,
+   "fii_selling_days": 0,
+   "sentiment": "neutral",
+   "sent_conf": 0.0,
+   "sentiment_score": 0,
+   "sentiment_trend": "stable",
+   "correlation": 0.411,
+   "relative_strength": -14.67,
+   "market_regime": "sideways",
+   "pct_from_52w_high": 21.6,
+   "sharpe": -0.21,
+   "max_drawdown": "-21.3%",
+   "score_breakdown": {
+    "ML Signal": "14/20",
+    "Multi-TF": "0/15",
+    "Volume": "10/10",
+    "Regime": "5/10",
+    "Rel. Strength": "0/10",
+    "Sector": "4/8",
+    "Fundamentals": "4/8",
+    "Sentiment": "3/8",
+    "Fibonacci": "5/5",
+    "Institutional": "4/10"
+   }
+  },
+  {
+   "ticker": "DMART.NS",
+   "sector": "Other",
+   "score": 49,
+   "signal": "BUY",
+   "confidence": 0.7956,
+   "buy_prob": 0.7956,
+   "accuracy": 0.783,
+   "price": 3951.9,
+   "rsi": 37.3,
+   "macd": -72.99,
+   "entry": 3951.9,
+   "stop_loss": 3760.66,
+   "target1": 4244.8,
+   "target2": 4525.62,
+   "rr1": 1.53,
+   "rr2": 3.0,
+   "risk_amount": 191.24,
+   "shares": 5,
+   "position_cost": 19759.5,
+   "capital_note": "",
+   "max_loss": 956.2,
+   "holding_days": 5,
+   "risk_level": "MEDIUM",
+   "signal_breakdown": [
+    {
+     "Factor": "RSI",
+     "Reading": "37.3",
+     "Status": "Neutral",
+     "Signal": "\ud83d\udfe1"
+    },
+    {
+     "Factor": "MACD",
+     "Reading": "-72.99",
+     "Status": "Bearish / weak",
+     "Signal": "\ud83d\udd34"
+    },
+    {
+     "Factor": "Trend (SMA)",
+     "Reading": "Below SMA200",
+     "Status": "Below key averages",
+     "Signal": "\ud83d\udd34"
+    },
+    {
+     "Factor": "Volume",
+     "Reading": "0.5x avg",
+     "Status": "Below average",
+     "Signal": "\ud83d\udd34"
+    },
+    {
+     "Factor": "Market regime",
+     "Reading": "SIDEWAYS",
+     "Status": "Neutral",
+     "Signal": "\ud83d\udfe1"
+    },
+    {
+     "Factor": "Rel. strength",
+     "Reading": "-10.1% vs Nifty",
+     "Status": "Underperforming",
+     "Signal": "\ud83d\udd34"
+    },
+    {
+     "Factor": "Sentiment",
+     "Reading": "Neutral",
+     "Status": "Negative / stable",
+     "Signal": "\ud83d\udfe1"
+    }
+   ],
+   "key_drivers": [],
+   "div_message": "",
+   "div_days": null,
+   "earnings_message": "",
+   "earnings_days": null,
+   "earnings_risk": "none",
+   "fii_bearish": false,
+   "fii_selling_days": 0,
+   "sentiment": "neutral",
+   "sent_conf": 0.0,
+   "sentiment_score": 0,
+   "sentiment_trend": "stable",
+   "correlation": 0.309,
+   "relative_strength": -10.08,
+   "market_regime": "sideways",
+   "pct_from_52w_high": 20.2,
+   "sharpe": 0.1,
+   "max_drawdown": "-24.5%",
+   "score_breakdown": {
+    "ML Signal": "19/20",
+    "Multi-TF": "4/15",
+    "Volume": "3/10",
+    "Regime": "5/10",
+    "Rel. Strength": "0/10",
+    "Sector": "4/8",
+    "Fundamentals": "2/8",
+    "Sentiment": "3/8",
+    "Fibonacci": "5/5",
+    "Institutional": "4/10"
+   }
+  }
+ ]
+}

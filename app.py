@@ -2068,24 +2068,49 @@ with tab4:
                 )
     except ImportError:
         st.info("Install prophet to enable forecasting.")
+    except Exception:
+        st.warning(
+            "Scenario projection is temporarily "
+            "unavailable — the data source didn't "
+            "respond. Try again in a minute."
+        )
+
+
+def _tab_guard(render_fn):
+    """
+    One tab crashing must never blank the rest of the
+    app — show a clean fallback card instead.
+    """
+    try:
+        render_fn()
+    except Exception:
+        st.warning(
+            "This section hit a temporary error — "
+            "refresh to try again. If it persists, "
+            "it's usually the market-data source "
+            "rate-limiting; it recovers on its own."
+        )
+
 
 with tab5:
-    render_watchlist_tab(
+    _tab_guard(lambda: render_watchlist_tab(
         t,
         max_items=None if IS_PRO
         else auth.FREE_WATCHLIST_MAX
-    )
+    ))
 
 with tab6:
-    render_journal_tab(t)
+    _tab_guard(lambda: render_journal_tab(t))
 
 with tab9:
-    render_track_record_tab(t)
+    _tab_guard(lambda: render_track_record_tab(t))
 
 with tab10:
-    render_pricing(t, user)
-    from legal import render_legal_expanders
-    render_legal_expanders(t)
+    def _render_plans():
+        render_pricing(t, user)
+        from legal import render_legal_expanders
+        render_legal_expanders(t)
+    _tab_guard(_render_plans)
 # ---------------------------------------------------------
 # Compliance footer (shown on every page)
 # ---------------------------------------------------------

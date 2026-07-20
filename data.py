@@ -15,13 +15,44 @@ from kite_data import (try_kite_history,
 # 2. yfinance fallback so the app keeps working when the
 #    Kite token has expired or isn't configured.
 
+# ---------------------------------------------------------
+# Hard timeout guard.
+# A hanging upstream call (Yahoo rate-limiting a host,
+# a slow network) must NEVER freeze the app: Streamlit
+# renders top-to-bottom, so one blocked fetch blanks
+# every tab below it. Every network fetch goes through
+# this wrapper — on timeout it returns the default and
+# the UI shows a clean "data unavailable" state instead
+# of hanging.
+# ---------------------------------------------------------
+from concurrent.futures import (ThreadPoolExecutor,
+                                TimeoutError as _FTimeout)
+
+FETCH_TIMEOUT_S = 12
+_fetch_pool = ThreadPoolExecutor(max_workers=8)
+
+
+def fetch_with_timeout(fn, timeout=FETCH_TIMEOUT_S,
+                       default=None):
+    try:
+        return _fetch_pool.submit(fn).result(
+            timeout=timeout
+        )
+    except (_FTimeout, Exception):
+        return default
+
+
 @st.cache_data(ttl=3600)
 def get_stock_data(ticker, period="2y"):
     df = try_kite_history(ticker, period=period)
     if df is not None and len(df) > 0:
         return df
     try:
-        df = yf.Ticker(ticker).history(period=period)
+        df = fetch_with_timeout(
+            lambda: yf.Ticker(ticker).history(
+                period=period
+            )
+        )
         if df is None or df.empty:
             return None
         df.dropna(inplace=True)
@@ -35,8 +66,10 @@ def get_weekly_data(ticker):
     if df is not None and len(df) > 0:
         return df
     try:
-        df = yf.Ticker(ticker).history(
-            period="2y", interval="1wk"
+        df = fetch_with_timeout(
+            lambda: yf.Ticker(ticker).history(
+                period="2y", interval="1wk"
+            )
         )
         if df is None or df.empty:
             return None
@@ -52,7 +85,9 @@ def get_nifty_data():
         return df
     for ticker in ["^NSEI", "NIFTYBEES.NS", "HDFCBANK.NS"]:
         try:
-            df = yf.Ticker(ticker).history(period="5y")
+            df = fetch_with_timeout(
+                lambda tk=ticker: yf.Ticker(tk).history(period="5y")
+            )
             if df is not None and not df.empty and len(df) > 50:
                 df.dropna(inplace=True)
                 return df
@@ -66,7 +101,9 @@ def get_india_vix():
     if df is not None and len(df) > 0:
         return df
     try:
-        df = yf.Ticker("^INDIAVIX").history(period="2y")
+        df = fetch_with_timeout(
+            lambda: yf.Ticker("^INDIAVIX").history(period="2y")
+        )
         if df is None or df.empty:
             return None
         df.dropna(inplace=True)
@@ -80,7 +117,9 @@ def get_sector_data(sector_ticker):
     if df is not None and len(df) > 0:
         return df
     try:
-        df = yf.Ticker(sector_ticker).history(period="3mo")
+        df = fetch_with_timeout(
+            lambda: yf.Ticker(sector_ticker).history(period="3mo")
+        )
         if df is None or df.empty:
             return None
         df.dropna(inplace=True)
@@ -91,15 +130,19 @@ def get_sector_data(sector_ticker):
 @st.cache_data(ttl=86400)
 def get_fundamentals(ticker):
     try:
-        info = yf.Ticker(ticker).info
+        info = fetch_with_timeout(
+            lambda: yf.Ticker(ticker).info, default={}
+        ) or {}
  
         # 52W High/Low from info first, fallback to OHLCV history
         w52_high = info.get("fiftyTwoWeekHigh", None)
         w52_low = info.get("fiftyTwoWeekLow", None)
         if not w52_high or not w52_low:
             try:
-                hist = yf.Ticker(ticker).history(period="1y")
-                if not hist.empty:
+                hist = fetch_with_timeout(
+                    lambda: yf.Ticker(ticker).history(period="1y")
+                )
+                if hist is not None and not hist.empty:
                     w52_high = round(float(hist["High"].max()), 2)
                     w52_low = round(float(hist["Low"].min()), 2)
             except Exception:
@@ -590,7 +633,9 @@ def validate_ticker(ticker):
         if (not ticker.endswith(".NS") and
                 not ticker.endswith("=F")):
             ticker = ticker + ".NS"
-        df = yf.Ticker(ticker).history(period="5d")
+        df = fetch_with_timeout(
+            lambda: yf.Ticker(ticker).history(period="5d")
+        )
         return ticker if not df.empty else None
     except Exception:
         return None

@@ -67,7 +67,10 @@ def get_watchlist_prices():
     for item in items:
         try:
             ticker = item["ticker"]
-            df = yf.Ticker(ticker).history(period="2d")
+            from data import fetch_with_timeout
+            df = fetch_with_timeout(
+                lambda: yf.Ticker(ticker).history(period="2d")
+            )
             if df is None or df.empty:
                 continue
             current = float(df["Close"].iloc[-1])

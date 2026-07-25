@@ -547,12 +547,13 @@ st.markdown(f"""
 from scan_store import load_scan, save_scan, log_picks
 from track_record_tab import render_track_record_tab
 
-(tab1, tab2, tab3, tab4, tab5, tab6, tab7,
+(tab1, tab2, tab3, tab4, tab11, tab5, tab6, tab7,
  tab9, tab10) = st.tabs([
          "Screener",
          "Level Check",
          "Stock Analysis",
          "Scenarios",
+         "Macro",
          "Watchlist",
          "Journal",
          "Settings",
@@ -655,6 +656,9 @@ with tab1:
             f"Pre-filter will run first (~90 seconds) "
             f"then full scan (~15-20 minutes)."
         )
+
+    from macro import render_macro_banner, get_macro_risk
+    render_macro_banner(t, days_ahead=10)
 
     top_row_l, top_row_r = st.columns([5, 1])
     with top_row_l:
@@ -1693,6 +1697,12 @@ with tab3:
         else:
             st.success("No earnings due in 30 days")
 
+        # Macro event risk (Fed / RBI / payrolls nearby)
+        from macro import get_macro_risk
+        _macro = get_macro_risk(days_ahead=3)
+        if _macro["flag"]:
+            st.warning(f"🌐 {_macro['message']}")
+
         st.markdown(
             '<div class="section-label">'
             'Model signal</div>',
@@ -2074,6 +2084,10 @@ with tab4:
             "unavailable — the data source didn't "
             "respond. Try again in a minute."
         )
+
+with tab11:
+    from macro import render_macro_tab
+    render_macro_tab(t)
 
 
 def _tab_guard(render_fn):

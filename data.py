@@ -433,6 +433,25 @@ def add_indicators(df):
                                      0.0)
         df["Downside_vol"] = neg_ret.rolling(20).std()
 
+        # --- Macro feature: US payrolls proximity ---
+        # Days to the next Non-Farm Payrolls release
+        # (first Friday). Known in advance for every date
+        # → leak-free. Markets often drift/chop into
+        # payrolls and move after; the model can learn
+        # whether setups near payrolls resolve differently.
+        try:
+            from macro import days_to_next_nfp
+            idx = pd.DatetimeIndex(df.index)
+            df["Days_to_NFP"] = [
+                days_to_next_nfp(d) for d in idx
+            ]
+            df["NFP_week"] = (
+                df["Days_to_NFP"] <= 3
+            ).astype(int)
+        except Exception:
+            df["Days_to_NFP"] = 15
+            df["NFP_week"] = 0
+
         df.dropna(inplace=True)
         return df
     except Exception:

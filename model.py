@@ -32,7 +32,9 @@ BASE_FEATURE_COLS = [
     "ATR_pct_rank", "Expiry_week",
     # v3.1 additions
     "ADX", "MFI", "OBV_slope",
-    "Return_60d", "Dist_52w_high", "Downside_vol"
+    "Return_60d", "Dist_52w_high", "Downside_vol",
+    # v3.2: macro / payrolls proximity
+    "Days_to_NFP", "NFP_week"
 ]
 
 # Advanced features — require external market data

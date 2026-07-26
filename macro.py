@@ -43,6 +43,24 @@ def _first_friday(year, month):
     return d + timedelta(days=(4 - d.weekday()) % 7)
 
 
+def days_to_next_nfp(d):
+    """
+    Trading-relevant: calendar days until the next US
+    Non-Farm Payrolls release (first Friday of a month).
+    Computable for ANY date in history, so it's a valid,
+    leak-free model feature across the full training
+    window. Capped at ~35.
+    """
+    if isinstance(d, datetime):
+        d = d.date()
+    ff_this = _first_friday(d.year, d.month)
+    if ff_this >= d:
+        return (ff_this - d).days
+    ny, nm = (d.year, d.month + 1) if d.month < 12 else \
+             (d.year + 1, 1)
+    return (_first_friday(ny, nm) - d).days
+
+
 def _nfp_dates(start, end):
     """US Non-Farm Payrolls — first Friday of each month."""
     out = []

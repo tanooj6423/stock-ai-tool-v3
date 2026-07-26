@@ -679,19 +679,21 @@ with tab1:
             run_scan = st.button("↺ Rescan",
                                  type="primary")
 
-    # Serve the freshest precomputed scan available.
-    # Weekends/holidays: yesterday's scan stays valid,
-    # so fall back up to 4 days before giving up.
+    # Serve the freshest precomputed scan available. If the
+    # nightly job hasn't run recently (e.g. staging Space with
+    # no cron), still show the most recent scan with a clear
+    # "as of" date rather than hiding it — an empty screen is
+    # worse than a dated one.
     precomputed = None if run_scan else (
         load_scan(max_age_hours=20)
-        or load_scan(max_age_hours=96)
+        or load_scan(max_age_hours=10_000_000)  # any age
     )
 
     if precomputed:
         picks, regime, scanned_at = precomputed
         st.caption(
-            f"Model scan · {scanned_at} · refreshed "
-            f"after each market close"
+            f"Model scan · as of {scanned_at} · "
+            f"refreshed after each market close"
         )
     elif not run_scan:
         # No precomputed results and not admin —
@@ -1312,16 +1314,53 @@ with tab3:
         else:
             ticker = NIFTY_50[0]
 
+    # ---- Lazy gate ----
+    # Analysis fetches 5y data + trains a model (slow,
+    # especially on rate-limited hosts). Streamlit runs
+    # every tab top-to-bottom on each interaction, so doing
+    # this unconditionally would block every tab below it.
+    # We only run it when the user explicitly asks, per
+    # ticker, so page loads stay instant.
+    st.markdown(
+        '<div class="section-label">'
+        f'Analyze {ticker.replace(".NS","")}</div>',
+        unsafe_allow_html=True
+    )
+    _analyze_key = f"analyze::{ticker}"
+    _run_analysis = st.session_state.get(_analyze_key, False)
+    ca1, ca2 = st.columns([1, 4])
+    with ca1:
+        if st.button("▶ Run analysis", type="primary",
+                     key=f"runan_{ticker}"):
+            st.session_state[_analyze_key] = True
+            _run_analysis = True
+
     # ---- Free-tier quota: N distinct analyses/day ----
     if "analyzed_today" not in st.session_state:
         st.session_state.analyzed_today = set()
     _new_ticker = ticker not in st.session_state.analyzed_today
     _quota_blocked = (
-        not IS_PRO and _new_ticker
+        _run_analysis and not IS_PRO and _new_ticker
         and not auth.can_analyze(user)
     )
 
-    if _quota_blocked:
+    if not _run_analysis:
+        st.markdown(
+            f'<div style="padding:32px;text-align:center;'
+            f'background:{t["card"]};'
+            f'border:1px solid {t["border"]};'
+            f'border-radius:12px;color:{t["text2"]};'
+            f'font-size:13px;">Pick a stock in the sidebar '
+            f'and press <b style="color:{t["text"]};">'
+            f'Run analysis</b> to compute its Equitex Score, '
+            f'model signal, levels and risk metrics.</div>',
+            unsafe_allow_html=True
+        )
+        df = None
+        fundamentals = nifty_df = correlation = rs = None
+        regime = "unknown"
+        support_levels, resistance_levels = [], []
+    elif _quota_blocked:
         render_upgrade_nudge(
             t,
             f"You've used your "
@@ -1375,8 +1414,11 @@ with tab3:
         prog.done()
 
     if df is None or df.empty:
-        if not _quota_blocked:
-            st.error("Could not load data.")
+        if _run_analysis and not _quota_blocked:
+            st.error(
+                "Could not load data — the market-data "
+                "source didn't respond. Try again in a moment."
+            )
     else:
         live_quote = (
             get_live_quote(ticker)
@@ -2006,8 +2048,27 @@ with tab4:
         ticker_f = st.selectbox(
             "Select stock", NIFTY_50, key="fc"
         )
+        # Lazy: Prophet fit is slow — only run on request so
+        # this tab never blocks the rest of the app.
+        run_forecast = st.button(
+            "▶ Run 30-day projection", type="primary",
+            key="run_fc"
+        )
+        if not run_forecast:
+            st.markdown(
+                f'<div style="padding:28px;text-align:center;'
+                f'background:{t["card"]};'
+                f'border:1px solid {t["border"]};'
+                f'border-radius:12px;color:{t["text2"]};'
+                f'font-size:13px;">Select a stock and press '
+                f'<b style="color:{t["text"]};">Run 30-day '
+                f'projection</b> to model a scenario path '
+                f'(Prophet trend model).</div>',
+                unsafe_allow_html=True
+            )
         with st.spinner(""):
-            df_f = get_stock_data(ticker_f, period="2y")
+            df_f = (get_stock_data(ticker_f, period="2y")
+                    if run_forecast else None)
             if df_f is not None:
                 pf = df_f.reset_index()[
                     ["Date", "Close"]

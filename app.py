@@ -17,6 +17,7 @@ from sentiment import (get_news_sentiment, NEGATIVE_KEYWORDS,
                        POSITIVE_KEYWORDS)
 from ai_explain import explain_signal, generate_pick_thesis
 from screener_engine import run_full_scan, calculate_position_size
+import branding
 from universe import ALL_STOCKS, NIFTY_50, COMMODITIES, get_sector
 from earnings import (get_earnings_status,
                       get_nse_earnings_calendar,
@@ -531,8 +532,8 @@ st.markdown(f"""
     <div class="app-name">equitex<span
         class="brand-dot">.</span></div>
     <div class="app-tagline">
-        Quantitative market analytics · NSE markets ·
-        Research tool — not investment advice ·
+        The Equitex Score for every NSE stock ·
+        Quantitative research tool — not investment advice ·
         Not SEBI-registered
     </div>
     <div style="margin-left:auto;display:flex;
@@ -547,13 +548,14 @@ st.markdown(f"""
 from scan_store import load_scan, save_scan, log_picks
 from track_record_tab import render_track_record_tab
 
-(tab1, tab2, tab3, tab4, tab11, tab5, tab6, tab7,
+(tab1, tab2, tab3, tab4, tab11, tab12, tab5, tab6, tab7,
  tab9, tab10) = st.tabs([
          "Screener",
          "Level Check",
          "Stock Analysis",
          "Scenarios",
          "Macro",
+         "Paper Trade",
          "Watchlist",
          "Journal",
          "Settings",
@@ -861,22 +863,25 @@ with tab1:
             with st.expander(
                 f"#{i+1}  "
                 f"{pick['ticker'].replace('.NS','')}  ·  "
+                f"Equitex {score} "
+                f"({branding.score_tier(score)[0]})  ·  "
                 f"{display_signal} "
                 f"{pick['confidence']:.0%}  ·  "
-                f"{score}/100  ·  "
                 f"₹{display_price:,.2f}  ·  "
                 f"Risk: {risk_level}  ·  "
                 f"Hold: {pick.get('holding_days',7)}d",
                 expanded=(i < 3)
             ):
                 st.markdown(
+                    branding.score_gauge_html(score, t),
+                    unsafe_allow_html=True
+                )
+                st.markdown(
                     f'<div style="display:flex;'
                     f'align-items:center;gap:10px;'
-                    f'margin-bottom:4px;flex-wrap:wrap;">'
+                    f'margin:10px 0 4px;flex-wrap:wrap;">'
                     f'<span class="{badge_class}">'
                     f'{display_signal}</span>'
-                    f'<span class="badge-score">'
-                    f'{score}/100</span>'
                     f'<span style="font-size:11px;'
                     f'font-weight:700;color:{risk_color};">'
                     f'● {risk_level} RISK</span>'
@@ -1056,7 +1061,27 @@ with tab1:
                     'Actions</div>',
                     unsafe_allow_html=True
                 )
-                ab1, ab2, ab3 = st.columns(3)
+                ab0, ab1, ab2, ab3 = st.columns(4)
+                with ab0:
+                    if st.button(
+                        "▶ Track this setup",
+                        key=f"track_{pick['ticker']}",
+                        type="primary"
+                    ):
+                        from paper_trade import track_setup
+                        ok_pt, msg_pt = track_setup(
+                            pick["ticker"], pick["entry"],
+                            pick["stop_loss"], pick["target1"],
+                            max(pick["shares"], 1),
+                            score=pick["score"]
+                        )
+                        if ok_pt:
+                            st.success(
+                                "Tracking in your Paper Trade "
+                                "book (virtual)."
+                            )
+                        else:
+                            st.info(msg_pt)
                 with ab1:
                     if st.button(
                         "📋 Log this trade",
@@ -1733,6 +1758,15 @@ with tab3:
         sig_label = (
             "BULLISH" if signal == "BUY" else "BEARISH"
         )
+        # Equitex Score for this stock = model's directional
+        # probability rendered on the signature 0-100 scale.
+        eqx_score = int(round(buy_prob * 100))
+        st.markdown(
+            branding.score_gauge_html(eqx_score, t),
+            unsafe_allow_html=True
+        )
+        st.markdown("<div style='height:8px'></div>",
+                    unsafe_allow_html=True)
         st.markdown(
             f'<span class="{sig_badge}">{sig_label}</span>'
             f'&nbsp;&nbsp;'
@@ -2088,6 +2122,10 @@ with tab4:
 with tab11:
     from macro import render_macro_tab
     render_macro_tab(t)
+
+with tab12:
+    from paper_trade import render_paper_tab
+    render_paper_tab(t)
 
 
 def _tab_guard(render_fn):

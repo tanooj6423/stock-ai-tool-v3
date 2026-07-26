@@ -18,6 +18,14 @@ from sentiment import (get_news_sentiment, NEGATIVE_KEYWORDS,
 from ai_explain import explain_signal, generate_pick_thesis
 from screener_engine import run_full_scan, calculate_position_size
 import branding
+
+# Zero-ops scan scheduler: the app keeps its own picks fresh
+# in the background (no cron, nothing for the user to start).
+try:
+    from auto_refresh import start_background_refresh
+    start_background_refresh()
+except Exception:
+    pass
 from universe import ALL_STOCKS, NIFTY_50, COMMODITIES, get_sector
 from earnings import (get_earnings_status,
                       get_nse_earnings_calendar,

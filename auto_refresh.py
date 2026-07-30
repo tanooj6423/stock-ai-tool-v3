@@ -73,9 +73,21 @@ def _run_scan():
         tuple(tickers), capital=100000, risk_pct=1.0,
         run_prefilter=False,
     )
-    save_scan(picks, regime, universe_name=name)
-    log_picks(picks)
-    _log(f"done: {len(picks)} setups, regime={regime}")
+
+    # Defensive: a rate-limited / failing data source makes
+    # run_full_scan return 0 picks. NEVER overwrite an existing
+    # good scan with an empty one — a dated screen beats a
+    # blank one. Only save when we got setups, or when there's
+    # no scan at all yet.
+    from scan_store import load_scan
+    have_existing = load_scan(max_age_hours=10_000_000) is not None
+    if picks or not have_existing:
+        save_scan(picks, regime, universe_name=name)
+        log_picks(picks)
+        _log(f"saved: {len(picks)} setups, regime={regime}")
+    else:
+        _log("0 setups (likely data-source throttling) — "
+             "keeping existing scan, not overwriting")
 
 
 def _scan_is_stale(max_age_hours=20):
